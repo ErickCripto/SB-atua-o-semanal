@@ -2,7 +2,6 @@ services:
   - type: web
     name: sb-atuacao-semanal
     runtime: static
-    plan: free
     buildCommand: mkdir -p public && cp index.html public/index.html
     staticPublishPath: ./public
     routes:
