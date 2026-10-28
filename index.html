@@ -36,7 +36,40 @@ button,input,select,textarea{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .muted{color:var(--mut)}.small{font-size:11.5px}.strong{font-weight:bold}
 .menu{position:fixed;left:0;top:0;bottom:0;width:22px;background:linear-gradient(90deg,#3DB88C,var(--menu));color:#fff;display:flex;align-items:center;justify-content:center;z-index:4}
-.menu span{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:bold;letter-spacing:.12em;font-size:11px}
+.menu{border:0;padding:0;cursor:pointer;flex-direction:column;gap:14px}
+.menu:hover{background:linear-gradient(90deg,#45C597,#2B9470)}
+.menu span,.menu b{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:bold;letter-spacing:.12em;font-size:11px}
+.menu b{font-size:9.5px;background:rgba(255,255,255,.22);border-radius:3px;padding:6px 1px}
+.escolha{display:grid;justify-items:center;gap:22px;padding:34px 8px 46px}
+.esc-h{text-align:center;display:grid;gap:4px}
+.esc-ola{font-size:22px;font-weight:bold;color:var(--teal-d)}
+.esc-perg{font-size:15px;color:#333}
+.esc-base{font-size:11.5px;color:var(--mut)}
+.esc-cards{display:grid;grid-template-columns:repeat(2,minmax(0,300px));gap:18px;width:100%;justify-content:center}
+@media (max-width:640px){.esc-cards{grid-template-columns:minmax(0,1fr)}}
+.esc-card{display:grid;justify-items:start;gap:7px;text-align:left;background:#fff;border:1px solid var(--line);border-top:5px solid var(--teal-l);border-radius:10px;padding:20px 20px 16px;cursor:pointer;box-shadow:0 2px 0 #D5DEDA;transition:transform .12s,box-shadow .12s,border-color .12s;min-width:0}
+.esc-card:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 20px rgba(20,60,50,.14);border-color:var(--teal-l)}
+.esc-card:disabled{opacity:.6;cursor:default}
+.esc-card+.esc-card{border-top-color:var(--org2)}
+.esc-card.atual{background:#F3FAF7}
+.esc-ico{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#E3F1EC;color:var(--teal-d)}
+.esc-card+.esc-card .esc-ico{background:#FDF0D8;color:#8A5400}
+.esc-ico svg{width:28px;height:28px}
+.esc-t{font-size:17px;font-weight:bold;color:var(--txt)}
+.esc-d{font-size:12.5px;color:#444;line-height:1.45}
+.esc-n{font-size:12px;color:var(--mut);padding-top:6px;border-top:1px solid var(--line-l);width:100%}
+.esc-n b{color:var(--txt);font-variant-numeric:tabular-nums}
+.esc-go{font-weight:bold;color:var(--teal-d);font-size:12.5px}
+.esc-card+.esc-card .esc-go{color:#8A5400}
+.esc-rod{font-size:12px;color:var(--mut);margin:0}
+@media (prefers-reduced-motion:reduce){.esc-card{transition:none}}
+.menupop{position:fixed;left:26px;top:calc(90px + env(safe-area-inset-top,0px));z-index:22;width:250px;background:#fff;border:1px solid var(--teal-d);border-radius:8px;box-shadow:0 10px 26px rgba(0,0,0,.2);padding:8px;display:grid;gap:6px}
+.mp-h{font-weight:bold;color:var(--teal-d);padding:2px 4px}
+.mp-op{display:grid;gap:1px;text-align:left;border:1px solid var(--line);background:#fff;border-radius:6px;padding:7px 9px;cursor:pointer}
+.mp-op span{font-size:11px;color:var(--mut)}.mp-op:hover{background:var(--hover)}
+.mp-op.on{border-color:var(--teal-l);background:#E8F3EF;box-shadow:inset 3px 0 0 var(--teal-l)}
+.mp-n{font-size:11px;color:var(--mut);margin:2px 4px}
+@media (max-width:760px){.menupop{left:12px;top:calc(60px + env(safe-area-inset-top,0px))}}
 @media (max-width:760px){.menu{display:none}}
 .shell{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1560px;margin:0 auto}
 @media (min-width:761px){.shell{padding-left:38px}}
@@ -150,6 +183,8 @@ table.grid{border-collapse:collapse;width:100%}
 .drop.over,.drop:hover{border-color:var(--teal-l);background:#E8F3EF}
 .pick{display:grid;gap:5px}.pick-i{display:flex;justify-content:space-between;gap:8px;border:1px solid var(--line);background:#fff;border-radius:4px;padding:7px 9px;cursor:pointer;flex-wrap:wrap;text-align:left}.pick-i:hover{background:var(--hover)}
 .err{color:var(--bad)}
+.carregando::before{content:"";display:inline-block;width:12px;height:12px;margin-right:7px;vertical-align:-2px;border:2px solid var(--line);border-top-color:var(--teal-l);border-radius:50%;animation:gira .8s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
 .scrim{position:fixed;inset:0;background:rgba(20,40,35,.35);z-index:20}
 .win{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));width:min(620px,calc(100% - 20px));background:#fff;z-index:21;border:1px solid var(--teal-d);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden}
 .win.wide{width:min(900px,calc(100% - 20px))}
@@ -165,10 +200,11 @@ table.grid{border-collapse:collapse;width:100%}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#20332D;color:#fff;padding:8px 16px;border-radius:6px;z-index:30;font-weight:bold;max-width:calc(100% - 32px)}
 @media (prefers-reduced-motion:no-preference){.win{animation:slide .15s ease-out}@keyframes slide{from{transform:translateX(18px);opacity:.7}}}
 </style>
-<div class="menu" aria-hidden="true"><span>MENU</span></div>
+<button class="menu" data-act="menu" aria-label="Menu: escolher visão"><span>MENU</span><b id="menuModo">EQUIPE</b></button>
+<div id="menuPop" class="menupop" hidden></div>
 <div class="shell">
  <div class="strip">
-  <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="userBox"></span><span id="basePos"></span><span>Situação: <b id="saveMode">Conectando…</b></span></span></div>
+  <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="visaoBox"></span><span id="userBox"></span><span id="basePos"></span><span>Situação: <b id="saveMode">Conectando…</b></span></span></div>
   <nav class="tabs">
    <button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button><button class="tab" data-act="go" data-v="ajustes">Ajustes</button>
   </nav>
@@ -332,9 +368,9 @@ const Core=(function(){
   function parseBase(aoa){
     const hr=findHeader(aoa,["Cod. Cedente","Vlr. Aberto"]);if(hr<0)return null;
     const H=aoa[hr].map(nrm),ix=n=>H.indexOf(nrm(n));
-    const c={k:ix("Título"),cod:ix("Cod. Cedente"),ced:ix("Cedente"),v:ix("Vlr. Aberto"),m:ix("Motivo Entrega"),sac:ix("Sacado"),ad:ix("Aditivo"),de:ix("Dta. Ent."),sn:ix("Seu Número"),rg:ix("Regional"),rot:ix("Rótulo"),sa:ix("Saída"),em:ix("Emissão NFe"),pz:ix("Prazo Estimado"),km:ix("KM"),pnf:ix("Prazo NF"),dent:ix("Dias Entrega"),ufC:ix("UF"),cidC:ix("Cidade"),ufS:H.lastIndexOf(nrm("UF")),cidS:H.lastIndexOf(nrm("Cidade")),mon:ix("Monitorada")};
+    const c={k:ix("Título"),cod:ix("Cod. Cedente"),ced:ix("Cedente"),v:ix("Vlr. Aberto"),m:ix("Motivo Entrega"),sac:ix("Sacado"),ad:ix("Aditivo"),de:ix("Dta. Ent."),sn:ix("Seu Número"),rg:ix("Regional"),rot:ix("Rótulo"),sa:ix("Saída"),em:ix("Emissão NFe"),pz:ix("Prazo Estimado"),km:ix("KM"),pnf:ix("Prazo NF"),dent:ix("Dias Entrega"),ufC:ix("UF"),cidC:ix("Cidade"),ufS:H.lastIndexOf(nrm("UF")),cidS:H.lastIndexOf(nrm("Cidade")),mon:ix("Monitorada"),ass:ix("Assistente")};
     if(c.m<0)throw new Error("A base não tem a coluna Motivo Entrega.");
-    const mot=[],motI=new Map(),sac=[],sacI=new Map(),rot=[],rotI=new Map(),dst=[],dstI=new Map(),org={},ced={},rows=[],seen=new Map(),regs={};
+    const mot=[],motI=new Map(),sac=[],sacI=new Map(),rot=[],rotI=new Map(),dst=[],dstI=new Map(),org={},ced={},rows=[],seen=new Map(),regs={},assC={};
     const city=(ci,uf)=>{const a=String(ci==null?"":ci).trim().toUpperCase(),b=String(uf==null?"":uf).trim().toUpperCase();return a||b?a+(b?"/"+b:""):""};
     const idx=(arr,map,s)=>{s=String(s==null?"":s).trim();let i=map.get(s);if(i===undefined){i=arr.length;arr.push(s);map.set(s,i)}return i};
     for(let r=hr+1;r<aoa.length;r++){const row=aoa[r];if(!row)continue;const cod=toInt(row[c.cod]);if(!cod)continue;
@@ -342,12 +378,14 @@ const Core=(function(){
       const n=seen.get(k)||0;seen.set(k,n+1);if(n)k+="#"+(n+1);
       if(c.ced>=0&&!ced[cod])ced[cod]=String(row[c.ced]==null?"":row[c.ced]).trim();
       if(c.cidC>=0&&!org[cod])org[cod]=city(row[c.cidC],row[c.ufC]);
+      if(c.ass>=0&&row[c.ass]){const a=String(row[c.ass]).trim();const m=assC[cod]||(assC[cod]={});m[a]=(m[a]||0)+1}
       const pnfT=c.pnf>=0?nrm(row[c.pnf]):"";if(c.rg>=0&&row[c.rg])regs[row[c.rg]]=(regs[row[c.rg]]||0)+1;
       const num=i=>i>=0&&typeof row[i]==="number"?row[i]:null;
       rows.push([k,cod,toNum(row[c.v]),idx(mot,motI,c.m>=0?row[c.m]:""),idx(sac,sacI,c.sac>=0?row[c.sac]:""),c.ad>=0?String(row[c.ad]==null?"":row[c.ad]).trim():"",c.de>=0?toSerial(row[c.de]):0,c.sn>=0?String(row[c.sn]==null?"":row[c.sn]).trim():"",idx(rot,rotI,c.rot>=0?canonRot(row[c.rot]):""),c.sa>=0?toSerial(row[c.sa]):0,c.em>=0?toSerial(row[c.em]):0,c.pz>=0?pzDays(row[c.pz]):null,num(c.km),pnfT==="fora"?1:(pnfT==="dentro"?0:null),num(c.dent),c.cidS>=0&&c.cidS!==c.cidC?idx(dst,dstI,city(row[c.cidS],row[c.ufS])):null,c.mon>=0?(U(row[c.mon])==="S"?1:0):null]);
     }
     const rg=Object.entries(regs).sort((a,b)=>b[1]-a[1])[0];
-    return{rows,mot,sac,rot,dst,org,ced,regional:rg?rg[0]:""};
+    const ass={};Object.entries(assC).forEach(([k,m])=>{ass[k]=Object.entries(m).sort((a,b)=>b[1]-a[1])[0][0]});
+    return{rows,mot,sac,rot,dst,org,ced,ass,regional:rg?rg[0]:""};
   }
 
   /* classificação dos motivos: classe única (para movimento) + multiplicidade (para o índice, como o SUMPRODUCT da planilha) */
@@ -437,7 +475,7 @@ const Core=(function(){
     const cods=[...new Set([...Object.keys(A),...Object.keys(T)])].sort((a,b)=>(+a)-(+b));
     return cods.map(cod=>{
       const a=A[cod],t=T[cod];const risco=riscoDe(cod,ref),mi=metaDe(cod,risco,ref);
-      const L={cod,nome:(a&&a.nome)||(t&&t.nome)||"",risco,meta:mi.meta,origemMeta:mi.origem,naCarteira:!!a,naTranche:!!t};
+      const L={cod,nome:(a&&a.nome)||(t&&t.nome)||"",risco,meta:mi.meta,origemMeta:mi.origem,naCarteira:!!a,naTranche:!!t,assistente:(car&&car.ass&&car.ass[cod])||(tra&&tra.ass&&tra.ass[cod])||""};
       const an=anot[cod]||{};L.dia=an.dia||diaSugerido(cod,risco);
       L.naoAtuar=!mi.esp&&naoAtuar(carac[cod]);const pz=prazoCk(carac[cod]);L.pz=pz?pz.n:null;L.pzTxt=pz?pz.txt:"";
       if(a){
@@ -705,7 +743,7 @@ const CFG_PADRAO={metaPadrao:.5,margem:.1,metaAlto:.4,metaMedio:.3,metaBaixo:.1,
 const S={mode:"loading",view:"atuacao",cfg:{...CFG_PADRAO},risco:{},lim:{},grupos:{},diario:{},car:{},anot:{},regs:{},chamados:{},parecer:{},qprofs:{},feito:{},
   dia:null,cmp:null,fStatus:"todos",fDia:"todos",fRisco:"todos",fGrupo:"",fRot:"",busca:"",sort:"status",
   atuTab:null,atuF:"ab",atuQ:"",aQ:"",aF:"todos",aDia:"",relTab:"mudou",relBase:"car",relDia:null,relCmp:null,
-  semRef:today(),parSexta:friday(today()),chF:"abertos",raw:null,armed:null,Q:null,bases:new Map(),loadingBase:new Set()};
+  semRef:today(),parSexta:friday(today()),chF:"abertos",raw:null,armed:null,Q:null,bases:new Map(),loadingBase:new Set(),resp:{},escolher:(()=>{try{return!sessionStorage.getItem("mesa_escolheu")}catch(e){return true}})(),visao:(()=>{try{return localStorage.getItem("mesa_visao")||"equipe"}catch(e){return"equipe"}})(),menuAberto:false};
 const refObj=()=>({cfg:S.cfg,risco:S.risco,lim:S.lim,carac:Object.fromEntries(Object.entries(S.car).map(([k,v])=>[k,v.texto])),anot:S.anot});
 const regDatas=()=>Object.keys(S.regs).sort();
 const regDe=d=>d&&S.regs[d]?S.regs[d]:null;
@@ -715,6 +753,15 @@ const ultimo=()=>regDatas().pop()||null;
 const anterior=d=>regDatas().filter(x=>x<d).pop()||null;
 const grpOf=cod=>{const g=S.grupos[cod];return g&&g[0]?{cod:String(g[0]),nome:String(g[1]||"").replace(/\s+/g," ").trim()}:{cod:"P_"+cod,nome:""}};
 const grpNome=cod=>{const g=grpOf(cod);return g.nome&&g.cod.startsWith("G_")?g.nome:""};
+/* responsável por cedente e visão "minhas carteiras" × "equipe" */
+const nrmN=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim().toLowerCase();
+function assDe(cod){for(const d of regDatas().slice().reverse()){const l=(S.regs[d].linhas||[]).find(x=>x.cod===String(cod));if(l&&l.assistente)return l.assistente}const lm=S.lim[cod];return lm&&lm.assistente||""}
+const respDe=cod=>(S.resp&&S.resp[cod])||assDe(cod);
+const meuNome=()=>store.kind==="sb"?((SBC.eu&&SBC.eu.nome)||""):(S.cfg.meuNome||"");
+const isMeu=cod=>{const m=nrmN(meuNome());return!!m&&nrmN(respDe(cod))===m};
+const vis=cod=>S.visao!=="minha"||isMeu(cod);
+function setVisao(v){S.visao=v;S.escolher=false;try{localStorage.setItem("mesa_visao",v);sessionStorage.setItem("mesa_escolheu","1")}catch(e){}S.menuAberto=false;render();window.scrollTo(0,0)}
+function nomesEquipe(){const s=new Map();const add=n=>{if(n&&!s.has(nrmN(n)))s.set(nrmN(n),n)};if(store.kind==="sb")(SBC.membros||[]).forEach(m=>add(m.nome));linhasDe(ultimo()).forEach(l=>add(respDe(l.cod)));Object.values(S.lim||{}).forEach(x=>add(x.assistente));add(meuNome());return[...s.values()].sort((a,b)=>a.localeCompare(b,"pt-BR"))}
 
 /* ---------- armazenamento ---------- */
 const store={kind:null,db:null,
@@ -725,7 +772,7 @@ const store={kind:null,db:null,
     if(db){
       this.kind="db";this.db=db;let pend=8;const ready=()=>{if(--pend===0){S.mode="db";afterLoad()}else if(S.mode==="db")render()};
       const sub=(q,fn)=>{let first=true;q.onSnapshot(s=>{fn(s);if(first){first=false;ready()}else render()},e=>toast("Falha ao sincronizar ("+e.code+"). Recarregue a página."))};
-      sub(db.collection("cfg"),s=>{s.docs.forEach(d=>{const v=d.data();if(d.id==="geral")S.cfg={...CFG_PADRAO,...v};if(d.id==="risco")S.risco=v.map||{};if(d.id==="limites")S.lim=v.map||{};if(d.id==="grupos")S.grupos=v.map||{};if(d.id==="diario")S.diario=v.map||{}})});
+      sub(db.collection("cfg"),s=>{s.docs.forEach(d=>{const v=d.data();if(d.id==="geral")S.cfg={...CFG_PADRAO,...v};if(d.id==="risco")S.risco=v.map||{};if(d.id==="limites")S.lim=v.map||{};if(d.id==="grupos")S.grupos=v.map||{};if(d.id==="diario")S.diario=v.map||{};if(d.id==="responsaveis")S.resp=v.map||{}})});
       sub(db.collection("caract"),s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());S.car=m});
       sub(db.collection("anot"),s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());S.anot=m});
       sub(db.collection("reg").orderBy("data","desc").limit(70),s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());S.regs=m});
@@ -738,14 +785,14 @@ const store={kind:null,db:null,
       this.kind="sb";await sbIniciar();
     }else{
       this.kind="local";
-      try{const raw=JSON.parse(localStorage.getItem("mc3")||"{}");if(raw.cfg)S.cfg={...CFG_PADRAO,...raw.cfg};["risco","lim","grupos","diario","car","anot","regs","chamados","parecer","qprofs","feito"].forEach(k=>{if(raw[k])S[k]=raw[k]})}catch(e){}
+      try{const raw=JSON.parse(localStorage.getItem("mc3")||"{}");if(raw.cfg)S.cfg={...CFG_PADRAO,...raw.cfg};["risco","lim","grupos","diario","car","anot","regs","chamados","parecer","qprofs","feito","resp"].forEach(k=>{if(raw[k])S[k]=raw[k]})}catch(e){}
       S.mode="local";afterLoad();
     }
   },
-  persist(){try{localStorage.setItem("mc3",JSON.stringify({cfg:S.cfg,risco:S.risco,lim:S.lim,grupos:S.grupos,diario:S.diario,car:S.car,anot:S.anot,regs:S.regs,chamados:S.chamados,parecer:S.parecer,qprofs:S.qprofs,feito:S.feito}))}catch(e){toast("O navegador não deixou salvar (espaço cheio).")}},
+  persist(){try{localStorage.setItem("mc3",JSON.stringify({cfg:S.cfg,risco:S.risco,lim:S.lim,grupos:S.grupos,diario:S.diario,resp:S.resp,car:S.car,anot:S.anot,regs:S.regs,chamados:S.chamados,parecer:S.parecer,qprofs:S.qprofs,feito:S.feito}))}catch(e){toast("O navegador não deixou salvar (espaço cheio).")}},
   apply(col,id,val){
     if(col==="base")return;
-    if(col==="cfg"){if(id==="geral")S.cfg=val?{...CFG_PADRAO,...val}:{...CFG_PADRAO};const k={risco:"risco",limites:"lim",grupos:"grupos",diario:"diario"}[id];if(k)S[k]=val?val.map:{}}
+    if(col==="cfg"){if(id==="geral")S.cfg=val?{...CFG_PADRAO,...val}:{...CFG_PADRAO};const k={risco:"risco",limites:"lim",grupos:"grupos",diario:"diario",responsaveis:"resp"}[id];if(k)S[k]=val?val.map:{}}
     else if(col==="feito"){if(val==null)delete S.feito[id];else S.feito[id]=val.ids}
     else{const k={caract:"car",anot:"anot",reg:"regs",chamados:"chamados",parecer:"parecer",qprof:"qprofs"}[col];if(!k)return;if(val==null)delete S[k][id];else S[k][id]=val}
   },
@@ -798,6 +845,36 @@ function baseChunks(date,kind,b){
 let xlsxP=null;
 function XLSXlib(){if(window.XLSX)return Promise.resolve(window.XLSX);if(xlsxP)return xlsxP;
   xlsxP=new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js";s.onload=()=>res(window.XLSX);s.onerror=()=>{xlsxP=null;rej(new Error("Não consegui carregar o leitor de Excel. Verifique a internet e tente de novo."))};document.head.appendChild(s)});return xlsxP}
+/* leitura da planilha em segundo plano (Web Worker), só com as abas necessárias */
+const XLSX_URL="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js";
+const ABAS_QUERO=["BASE CARTEIRAS","BASE - TRANCHE","DATA DA BASE","RISCO PRINCING","LIMITE - TRANCHE","CARACTERISTICA","METAS ESPECIAIS","METAS TRANCHE"];
+function lerPlanilhaCorpo(X,buf,want){
+  const meta=X.read(buf,{type:"array",bookSheets:true});const names=meta.SheetNames,up=names.map(n=>n.toUpperCase());
+  let pick=names.filter((n,i)=>want.includes(up[i]));if(!pick.some(n=>/^BASE /i.test(n)))pick=names.slice(0,3);
+  const wb=X.read(buf,{type:"array",sheets:pick,dense:true,cellStyles:false,cellHTML:false,cellText:false,cellFormula:false,cellNF:false});
+  const sheets={};pick.forEach(n=>{const ws=wb.Sheets[n];if(ws)sheets[n]=X.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:false})});
+  return{names,sheets};
+}
+let workerOk=true;
+async function lerPlanilha(file,aviso){
+  const buf=await file.arrayBuffer();
+  if(workerOk&&window.Worker&&window.Blob){
+    try{
+      const src=`importScripts(${JSON.stringify(XLSX_URL)});const lerPlanilhaCorpo=${lerPlanilhaCorpo.toString()};onmessage=e=>{try{postMessage({ok:true,r:lerPlanilhaCorpo(XLSX,e.data.buf,e.data.want)})}catch(err){postMessage({ok:false,msg:String(err&&err.message||err)})}}`;
+      const url=URL.createObjectURL(new Blob([src],{type:"text/javascript"}));
+      const r=await new Promise((res,rej)=>{let w;try{w=new Worker(url)}catch(e){rej(e);return}
+        const t=setTimeout(()=>{w.terminate();rej(new Error("tempo"))},180000);
+        w.onmessage=e=>{clearTimeout(t);w.terminate();e.data.ok?res(e.data.r):rej(Object.assign(new Error(e.data.msg),{planilha:true}))};
+        w.onerror=e=>{clearTimeout(t);w.terminate();rej(new Error("worker"))};
+        w.postMessage({buf,want:ABAS_QUERO},[buf])});
+      URL.revokeObjectURL(url);return r;
+    }catch(e){if(e.planilha)throw new Error("Não consegui ler a planilha: "+e.message);workerOk=false}
+  }
+  if(aviso)aviso("Lendo a planilha (a tela pode parar por alguns segundos)…");
+  await new Promise(r=>setTimeout(r,60));
+  const X=await XLSXlib();return lerPlanilhaCorpo(X,await file.arrayBuffer(),ABAS_QUERO);
+}
+const pausa=()=>new Promise(r=>setTimeout(r,0));
 async function lerArquivo(file,dates){const X=await XLSXlib();const buf=await file.arrayBuffer();return X.read(buf,{type:"array",cellDates:!!dates})}
 async function baixar(nome,data,tipo){
   const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
@@ -837,7 +914,7 @@ function spark(vals,meta){const pts=vals.map((x,i)=>[i,x]).filter(p=>p[1]!=null)
   return`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${meta!=null?`<line x1="0" x2="${W}" y1="${Y(meta)}" y2="${Y(meta)}" stroke="#C9A23A" stroke-dasharray="2 2"/>`:""}<path d="${d}" fill="none" stroke="#1E6E5C" stroke-width="1.6"/><circle cx="${X(l[0])}" cy="${Y(l[1])}" r="2.5" fill="#1E6E5C"/></svg>`}
 function delBtn(key,label,cls=""){return`<button class="btn danger ${cls}${S.armed===key?" armed":""}" data-act="arm" data-key="${esc(key)}">${S.armed===key?"Confirmar exclusão":label}</button>`}
 const vq=(x,attrs)=>x&&x[0]?`<button class="lk" ${attrs||""}>${mk(x[1])}</button> <small class="muted">${fN(x[0])}</small>`:'<span class="muted">—</span>';
-const cedCell=(cod,nome,extra)=>{const g=grpNome(cod);return`<td class="ced"><button class="lk strong" data-act="ced" data-id="${cod}">${esc(nomeB(nome))}</button><div class="sub">${cod}${g?" · grupo "+esc(nomeB(g)):""}${extra||""}</div></td>`};
+const cedCell=(cod,nome,extra)=>{const g=grpNome(cod),r=S.visao==="equipe"?respDe(cod):"";return`<td class="ced"><button class="lk strong" data-act="ced" data-id="${cod}">${esc(nomeB(nome))}</button><div class="sub">${cod}${g?" · grupo "+esc(nomeB(g)):""}${r?" · resp. "+esc(nomeB(r)):""}${extra||""}</div></td>`};
 const sub=(tabs,cur,act)=>`<div class="subtabs">${tabs.map(([k,t])=>`<button class="stab${cur===k?" on":""}" data-act="${act}" data-v="${k}">${t}</button>`).join("")}</div>`;
 const seg=(act,cur,opts)=>`<span class="seg">${opts.map(([k,t])=>`<button data-act="${act}" data-v="${k}" class="${cur===k?"on":""}">${t}</button>`).join("")}</span>`;
 
@@ -863,7 +940,7 @@ async function sbEntrar(user){
     const rg=await SBC.cli.from("docs").select("id,data").eq("col","reg").order("id",{ascending:false}).limit(70);if(rg.error)throw rg.error;(rg.data||[]).forEach(r=>store.apply("reg",r.id,r.data));
     const qp=await SBC.cli.from("docs").select("id,data").eq("col","qprof").order("updated_at",{ascending:false}).limit(60);(qp.data||[]).forEach(r=>store.apply("qprof",r.id,r.data));
     if(!SBC.canal)SBC.canal=SBC.cli.channel("docs-mesa").on("postgres_changes",{event:"*",schema:"public",table:"docs"},p=>{const row=p.eventType==="DELETE"?p.old:p.new;if(!row||!row.col||row.col==="base")return;store.apply(row.col,row.id,p.eventType==="DELETE"?null:row.data);sbRender()}).subscribe();
-    S.mode="sb";render();
+    S.mode="sb";if(!SBC.jaEntrou){SBC.jaEntrou=true}render();
   }catch(e){S.mode="login";S.auth={tab:"entrar",err:"Não consegui carregar os dados ("+(e.message||e)+"). Confira se o setup.sql foi rodado no Supabase."};render()}
 }
 const vIn=id=>{const el=document.getElementById(id);return el?el.value:""};
@@ -946,7 +1023,7 @@ function histRotulo(h){const d=h.data||{};if(h.col==="anot")return"Anotação ·
 function histResumo(h){const d=h.data||{};if(h.col==="anot")return[d.acao&&"Ação: "+d.acao,d.pendencia&&"Pendência: "+d.pendencia,d.proximo&&"Próximo: "+d.proximo].filter(Boolean).join(" · ");if(h.col==="chamados")return[d.motivo,d.retorno].filter(Boolean).join(" · ");if(h.col==="parecer")return(d.resumo||"").slice(0,160);return""}
 async function histRestaurar(hid){const h=(SBC.hist||[]).find(x=>String(x.hid)===String(hid));if(!h)return;await safe(store.set(h.col,h.id,h.data),"Versão restaurada");histCarregar()}
 function backupDocs(){const out=[];const pushMap=(col,m,wrap)=>Object.entries(m).forEach(([id,v])=>out.push({col,id,data:wrap?wrap(v):v}));
-  out.push({col:"cfg",id:"geral",data:S.cfg},{col:"cfg",id:"risco",data:{map:S.risco}},{col:"cfg",id:"limites",data:{map:S.lim}},{col:"cfg",id:"grupos",data:{map:S.grupos}},{col:"cfg",id:"diario",data:{map:S.diario}});
+  out.push({col:"cfg",id:"geral",data:S.cfg},{col:"cfg",id:"risco",data:{map:S.risco}},{col:"cfg",id:"limites",data:{map:S.lim}},{col:"cfg",id:"grupos",data:{map:S.grupos}},{col:"cfg",id:"diario",data:{map:S.diario}},{col:"cfg",id:"responsaveis",data:{map:S.resp}});
   pushMap("caract",S.car);pushMap("anot",S.anot);pushMap("reg",S.regs);pushMap("chamados",S.chamados);pushMap("parecer",S.parecer);pushMap("qprof",S.qprofs);pushMap("feito",S.feito,v=>({ids:v}));return out}
 async function backupBaixar(){
   toast("Preparando backup…");const docs=backupDocs();
@@ -990,17 +1067,47 @@ function vConexao(){
    <div class="form"><label class="fl">Project URL<input class="inp" id="sb_url" placeholder="https://xxxx.supabase.co"></label><label class="fl">anon key<input class="inp mono" id="sb_key" placeholder="eyJ..."></label><button class="btn pri" data-act="sbConectar">Conectar</button></div>`}</fieldset>`;
 }
 
+function vEscolha(){
+  const L=linhasDe(ultimo()).filter(l=>l.naCarteira||l.tr),meus=L.filter(l=>isMeu(l.cod));
+  const ab=a=>a.filter(l=>l.status==="Abaixo").length;const nome=meuNome();
+  const primeiro=(store.kind==="sb"&&SBC.eu&&SBC.eu.nome||nome||"").split(" ")[0];
+  const sufixo=n=>n===1?"":"s";
+  const icoEu='<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="3.2"/><path d="M8 42c2.5-9 9-13 16-13s13.5 4 16 13" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>';
+  const icoEq='<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="33" cy="15" r="5.5" fill="none" stroke="currentColor" stroke-width="3"/><path d="M4 41c2-7.5 7-11 13-11s11 3.5 13 11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M29 28c1.3-.4 2.6-.6 4-.6 5 0 9 3 11 10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+  const semNome=!nome;
+  return`<div class="escolha"><div class="esc-h"><div class="esc-ola">${primeiro?"Olá, "+esc(nomeB(primeiro))+"!":"Olá!"}</div><div class="esc-perg">Qual carteira você quer acompanhar agora?</div>${ultimo()?`<div class="esc-base">Base de ${fd(ultimo())}</div>`:""}</div>
+   <div class="esc-cards">
+    <button class="esc-card${S.visao==="minha"?" atual":""}" data-act="visao" data-v="minha"${semNome?" disabled":""}><span class="esc-ico">${icoEu}</span><span class="esc-t">Minha carteira</span><span class="esc-d">Só os cedentes em que você é o responsável.</span>
+     <span class="esc-n">${semNome?"Defina seu nome em Ajustes para usar esta opção":`<b>${meus.length}</b> cedente${sufixo(meus.length)}${meus.length?` · <b>${ab(meus)}</b> abaixo da meta`:""}`}</span><span class="esc-go">Entrar ›</span></button>
+    <button class="esc-card${S.visao==="equipe"?" atual":""}" data-act="visao" data-v="equipe"><span class="esc-ico">${icoEq}</span><span class="esc-t">Todos os cedentes</span><span class="esc-d">A carteira completa da equipe, com o responsável de cada cedente.</span>
+     <span class="esc-n"><b>${L.length}</b> cedente${sufixo(L.length)}${L.length?` · <b>${ab(L)}</b> abaixo da meta`:""}</span><span class="esc-go">Entrar ›</span></button>
+   </div><p class="esc-rod">Dá para trocar quando quiser pelo <b>MENU</b>, na faixa verde à esquerda, ou em <b>Visão</b>, no topo.</p></div>`;
+}
+function vMenu(){
+  const L=linhasDe(ultimo());const meus=L.filter(l=>isMeu(l.cod)).length;
+  return`<div class="mp-h">Visão</div>
+   <button class="mp-op${S.visao==="minha"?" on":""}" data-act="visao" data-v="minha"><b>Minhas carteiras</b><span>${meuNome()?esc(nomeB(meuNome()))+" · "+meus+" cedente"+(meus===1?"":"s"):"defina o seu nome"}</span></button>
+   <button class="mp-op${S.visao==="equipe"?" on":""}" data-act="visao" data-v="equipe"><b>Equipe toda</b><span>${L.length} cedentes</span></button>
+   <p class="mp-n">O responsável de cada cedente vem da coluna Assistente da base. Para trocar, abra a ficha do cedente.</p>`;
+}
+
 /* ---------- render ---------- */
 function render(){
   $$(".tab").forEach(t=>{if(t.dataset.v===S.view)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
   $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"?"Aguardando acesso":"Conectando…";
   const ub=$("#userBox");if(ub)ub.innerHTML=S.mode==="sb"&&SBC.user?`${esc(SBC.eu&&SBC.eu.nome||SBC.user.email)} · <button class="lk" data-act="trocarSenha">alterar senha</button> · <button class="lk" data-act="sair">sair</button>`:"";
-  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar";
+  const mm=$("#menuModo");if(mm)mm.textContent=S.visao==="minha"?"MINHAS":"EQUIPE";
+  const vb=$("#visaoBox");if(vb)vb.innerHTML=`Visão: <button class="lk strong" data-act="menu">${S.visao==="minha"?"Minhas carteiras":"Equipe toda"}</button>`;
+  const mp=$("#menuPop");if(mp){mp.hidden=!S.menuAberto;if(S.menuAberto)mp.innerHTML=vMenu()}
+  const escolhendo=S.escolher&&["db","sb","local"].includes(S.mode);
+  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||escolhendo;
+  if(escolhendo){$("#main").innerHTML=vEscolha();return}
   if(S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"){$("#main").innerHTML=vLogin();const f=$("#main input:not([type=hidden])");if(f&&!$("#main").contains(document.activeElement))f.focus();return}
   const u=ultimo();$("#basePos").textContent=u?"Base de "+fd(u)+(S.cfg.regional?" · Regional "+S.cfg.regional:""):"Nenhuma base";
   if(S.mode==="loading"){$("#main").innerHTML='<div class="loading">Carregando…</div>';return}
   const ae=document.activeElement;if(ae&&$("#main").contains(ae)&&(ae.dataset.par!=null||ae.id==="q_texto"||ae.id==="busca"||ae.id==="atuQ"||ae.id==="aQ")&&render.skip){render.skip=false;return}
-  const banner=S.mode==="local"?'<div class="banner">Abra pelo Claude (logado) para salvar na sua conta. Agora os dados ficam só neste navegador.</div>':"";
+  const avisoVisao=S.visao==="minha"?(!meuNome()?`<div class="banner">Visão “Minhas carteiras”: ${store.kind==="sb"?"o seu nome na equipe está vazio. Peça para o administrador preencher em Ajustes › Equipe":"defina o seu nome na base em Ajustes"} para o site saber quais cedentes são seus. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:(!linhasDe(ultimo()).some(l=>isMeu(l.cod))&&ultimo()?`<div class="banner">Nenhum cedente com o responsável “${esc(meuNome())}” na base. O responsável vem da coluna Assistente da base; dá para trocar na ficha do cedente. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:"")):"";
+  const banner=avisoVisao+(S.mode==="local"?'<div class="banner">Abra pelo Claude (logado) para salvar na sua conta. Agora os dados ficam só neste navegador.</div>':"");
   const v={anotacoes:vAnotacoes,atuacao:vAtuacao,carteiras:vCarteiras,tranche:vTranche,relatorios:vRelatorios,chamados:vChamados,parecer:vParecer,qprof:vQprof,ajustes:vAjustes}[S.view]||vAtuacao;
   const keep=ae&&ae.id&&$("#main").contains(ae)?{id:ae.id,pos:ae.selectionStart}:null;
   $("#main").innerHTML=banner+v();
@@ -1015,7 +1122,7 @@ const isDone=(k,id)=>!!(S.feito[fKey(k)]||{})[id];
 async function setDone(k,id,on){const key=fKey(k);const ids={...(S.feito[key]||{})};if(on)ids[id]=1;else delete ids[id];S.feito[key]=ids;render();await safe(store.set("feito",key,{ids}))}
 const feC=(k,id)=>`<td class="c"><input type="checkbox" data-fk="${k}" data-fid="${esc(id)}"${isDone(k,id)?" checked":""} aria-label="Feito"></td>`;
 function atuData(){
-  const d=ultimo();if(!d)return null;const L=linhasDe(d),prev=mapa(anterior(d));
+  const d=ultimo();if(!d)return null;const L=linhasDe(d).filter(l=>vis(l.cod)),prev=mapa(anterior(d));
   const ultimos=regDatas().filter(x=>x<=d).slice(-5),entN=ultimos.filter(x=>linhasDe(x).some(l=>l.mov)).length;
   const list=L.map(l=>{
     const o={...l,grp:grpOf(l.cod),anot:S.anot[l.cod]||null,ch:chDoCed(l.cod),p:prev[l.cod]||null};
@@ -1111,7 +1218,7 @@ function foco(D){
      <td class="wrap small">${esc(mot(o))}</td><td class="nw"><button class="btn sm" data-act="copyTxt" data-t="${esc(mot(o))}">Copiar</button> ${o.ch.open.length?"":`<button class="btn sm pri" data-act="newCh" data-id="${o.cod}" data-mot="${esc(o.c99q[0]?"C99":o.atr[0]?"ATRASO DA MERCADORIA":"Abaixo da meta")}" data-ret="${esc(mot(o))}">Abrir chamado</button>`}</td>${anotCell(o.cod,"q")}</tr>`+editRow(o.cod,"q",10)).join("")||'<tr><td colspan="10" class="muted">Nenhum cedente com problema na última base.</td></tr>'}</tbody></table></div>
     ${totbar([["Com problema",P.length],["Sem chamado",semCh],["C99 na carteira",mk(all.reduce((a,o)=>a+o.c99q[1],0))],["Não entregue, prazo vencido",mk(all.reduce((a,o)=>a+o.atr[1],0))]])}`;
   }
-  const C=chList().filter(c=>c.st!=="Fechado");const ord={"Não efetivo":0,Respondido:1,"Atualizado sem retorno":2,Atrasado:3,Atualizado:4,Aberto:5};
+  const C=chList().filter(c=>c.st!=="Fechado"&&vis(c.cod));const ord={"Não efetivo":0,Respondido:1,"Atualizado sem retorno":2,Atrasado:3,Atualizado:4,Aberto:5};
   C.sort((a,b)=>(isDone("w","c"+a.id)-isDone("w","c"+b.id))||((ord[a.st]??9)-(ord[b.st]??9))||((chDiasSem(b)||0)-(chDiasSem(a)||0)));
   const ex=D.list.filter(o=>o.tr&&(o.tr.status==="EXCESSO"||o.tr.status==="Acima da meta")).sort((a,b)=>(b.tr.excesso||0)-(a.tr.excesso||0));
   return`<p class="hint">Sexta: cobre o retorno dos chamados (retorno recebido ou não efetivo primeiro) e revise quem ainda está em excesso na tranche antes do parecer.</p>
@@ -1125,7 +1232,7 @@ function foco(D){
 const LUPA='<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.4"/><line x1="15.5" y1="15.5" x2="21" y2="21" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
 function vAnotacoes(){
   const d=ultimo(),L=linhasDe(d);const by={};L.forEach(l=>by[l.cod]=l);
-  const cods=[...new Set([...L.map(l=>l.cod),...Object.keys(S.anot)])];
+  const cods=[...new Set([...L.map(l=>l.cod),...Object.keys(S.anot)])].filter(vis);
   const q=Core.nrm(S.aQ||"");const hd=WD[new Date().getDay()];
   const all=cods.map(cod=>{const l=by[cod]||null,a=S.anot[cod]||{};const tem=!!(a.obs||a.acao||a.pendencia||a.proximo);
     return{cod,nome:(l&&l.nome)||nomeCed(cod)||"(sem nome)",l,a,tem,dia:a.dia||(l?l.dia:""),idade:a.atualizado?bdays(a.atualizado,today()):null}});
@@ -1163,7 +1270,7 @@ function gruposDe(d){const m=new Map();linhasDe(d).forEach(l=>{const g=grpOf(l.c
 function vCarteiras(){
   fixDatas();if(!S.dia)return`<div class="ptitle">Carteiras</div>${vazio()}`;
   const rots=S.fRot?[S.fRot]:[];const cfg=S.cfg;
-  const L=linhasDe(S.dia).filter(l=>l.naCarteira).map(l=>Core.porRotulo(l,rots,cfg)).filter(Boolean);
+  const L=linhasDe(S.dia).filter(l=>l.naCarteira&&vis(l.cod)).map(l=>Core.porRotulo(l,rots,cfg)).filter(Boolean);
   const C={};linhasDe(S.cmp).forEach(l=>{const x=Core.porRotulo(l,rots,cfg);if(x)C[l.cod]=x});
   const cd=L.filter(l=>l.ind!=null&&!l.naoAtuar);
   const tv=L.reduce((a,l)=>a+l.valor,0),tcv=L.reduce((a,l)=>a+l.vconf,0);
@@ -1203,7 +1310,7 @@ function vCarteiras(){
 /* ---------- TRANCHE ---------- */
 function vTranche(){
   fixDatas();if(!S.dia)return`<div class="ptitle">Tranche</div>${vazio()}`;
-  const L=linhasDe(S.dia).filter(l=>l.tr),C=mapa(S.cmp);const ord={EXCESSO:0,"Acima da meta":1,"Sem limite":2,OK:3};
+  const L=linhasDe(S.dia).filter(l=>l.tr&&vis(l.cod)),C=mapa(S.cmp);const ord={EXCESSO:0,"Acima da meta":1,"Sem limite":2,OK:3};
   L.sort((a,b)=>ord[a.tr.status]-ord[b.tr.status]||b.tr.valor-a.tr.valor);
   const tot=L.reduce((a,l)=>a+l.tr.valor,0),lim=L.filter(l=>l.tr.limite!=null).reduce((a,l)=>a+l.tr.limite,0),exc=L.filter(l=>l.tr.status==="EXCESSO");
   return`<div class="ptitle">Tranche <span class="muted">· posição de ${fd(S.dia)}</span><span class="right"><button class="btn pri" data-act="import">Importar base do dia</button></span></div>
@@ -1241,7 +1348,7 @@ function vMudou(){
   const extra=`<label class="fl">Base ${seg("relBase",k,[["car","Carteira"],["tra","Tranche"]])}</label>`;
   if(!S.relCmp)return relFiltros(extra)+`<p class="hint">Só há uma posição importada. Assim que você importar a próxima base, aqui aparece o que mudou de uma para a outra: títulos que entraram, que saíram do risco, que foram confirmados, novos problemas e a mudança de índice e de situação de cada carteira.</p>`;
   const R=relMov();
-  const cods=[...new Set([...Object.keys(D),...Object.keys(P)])].filter(c=>k==="car"?(D[c]&&D[c].naCarteira)||(P[c]&&P[c].naCarteira):(D[c]&&D[c].tr)||(P[c]&&P[c].tr));
+  const cods=[...new Set([...Object.keys(D),...Object.keys(P)])].filter(vis).filter(c=>k==="car"?(D[c]&&D[c].naCarteira)||(P[c]&&P[c].naCarteira):(D[c]&&D[c].tr)||(P[c]&&P[c].tr));
   const val=(l)=>k==="car"?(l&&l.naCarteira?l.valor:0):(l&&l.tr?l.tr.valor:0);
   const ind=(l)=>k==="car"?(l&&l.naCarteira?l.ind:null):(l&&l.tr&&typeof l.tr.pct==="number"?l.tr.pct:null);
   const st=(l)=>k==="car"?(l&&l.naCarteira?l.status:"—"):(l&&l.tr?l.tr.status:"—");
@@ -1249,7 +1356,7 @@ function vMudou(){
   const rows=cods.map(c=>({c,n:(D[c]||P[c]).nome,a:P[c],b:D[c],dv:val(D[c])-val(P[c]),di:ind(D[c])!=null&&ind(P[c])!=null?ind(D[c])-ind(P[c]):null}));
   const ordM={Abaixo:0,EXCESSO:0,"Atenção":1,"Acima da meta":1};
   rows.sort((x,y)=>((st(x.b)!==st(x.a)?0:1)-(st(y.b)!==st(y.a)?0:1))||((x.di??0)-(y.di??0)));
-  const T=f=>{let q=0,v=0;M.forEach(o=>{q+=o[f][0];v+=o[f][1]});return[q,v]};
+  const T=f=>{let q=0,v=0;M.forEach((o,k)=>{if(!vis(String(k)))return;q+=o[f][0];v+=o[f][1]});return[q,v]};
   const tvD=cods.reduce((a,c)=>a+val(D[c]),0),tvP=cods.reduce((a,c)=>a+val(P[c]),0);
   const tcD=k==="car"?cods.reduce((a,c)=>a+(D[c]&&D[c].naCarteira?D[c].vconf:0),0):0,tcP=k==="car"?cods.reduce((a,c)=>a+(P[c]&&P[c].naCarteira?P[c].vconf:0),0):0;
   const iD=tvD?tcD/tvD:null,iP=tvP?tcP/tvP:null;
@@ -1288,7 +1395,7 @@ function textoMudou(rows,o){
   return L.join("\n");
 }
 function vGrupos(){
-  const D=linhasDe(S.relDia).filter(l=>l.naCarteira),P=linhasDe(S.relCmp).filter(l=>l.naCarteira);
+  const D=linhasDe(S.relDia).filter(l=>l.naCarteira&&vis(l.cod)),P=linhasDe(S.relCmp).filter(l=>l.naCarteira&&vis(l.cod));
   const ag=L=>{const m=new Map();L.forEach(l=>{const g=grpOf(l.cod);const k=g.cod.startsWith("G_")?g.cod:"P_"+l.cod;const o=m.get(k)||{k,nome:g.cod.startsWith("G_")?g.nome:l.nome,ced:[],v:0,cv:0,ab:0,tr:0,ex:0};o.ced.push(l);o.v+=l.valor;o.cv+=l.vconf;if(l.status==="Abaixo")o.ab++;m.set(k,o)});return m};
   const mD=ag(D),mP=ag(P);linhasDe(S.relDia).forEach(l=>{if(!l.tr)return;const g=grpOf(l.cod);const k=g.cod.startsWith("G_")?g.cod:"P_"+l.cod;const o=mD.get(k);if(o){o.tr+=l.tr.valor;o.ex+=l.tr.excesso||0}});
   const L=[...mD.values()].sort((a,b)=>b.v-a.v);
@@ -1297,7 +1404,7 @@ function vGrupos(){
   <p class="foot">Grupo pela coluna COD_CLIENTE da aba RISCO PRINCING (G_ = grupo; cedente sem grupo aparece sozinho). <button class="lk" data-act="copyTbl" data-id="tGrp">Copiar tabela</button></p>`;
 }
 function vRotulos(){
-  const ag=d=>{const m=new Map();linhasDe(d).forEach(l=>Object.entries(l.rot||{}).forEach(([r,x])=>{const o=m.get(r)||{r,q:0,v:0,cv:0,c9:0,na:0,nc:0,ced:new Set()};o.q+=x[0];o.v+=x[1];o.cv+=x[2];o.c9+=x[3];o.na+=x[4];o.nc+=x[5];o.ced.add(l.cod);m.set(r,o)}));return m};
+  const ag=d=>{const m=new Map();linhasDe(d).filter(l=>vis(l.cod)).forEach(l=>Object.entries(l.rot||{}).forEach(([r,x])=>{const o=m.get(r)||{r,q:0,v:0,cv:0,c9:0,na:0,nc:0,ced:new Set()};o.q+=x[0];o.v+=x[1];o.cv+=x[2];o.c9+=x[3];o.na+=x[4];o.nc+=x[5];o.ced.add(l.cod);m.set(r,o)}));return m};
   const D=ag(S.relDia),P=ag(S.relCmp);const L=[...D.values()].sort((a,b)=>b.v-a.v);const tv=L.reduce((a,o)=>a+o.v,0);
   return relFiltros()+`<div class="tw"><table class="grid" id="tRot"><thead><tr><th>Rótulo</th><th>Cedentes</th><th>Títulos</th><th>Valor aberto</th><th>% da carteira</th><th>Índice</th><th>Δ ${S.relCmp?fds(S.relCmp):""}</th><th>C99</th><th>Não atende</th><th>Nada consta</th><th></th></tr></thead>
   <tbody>${L.map(o=>{const p=P.get(o.r),i=o.v?o.cv/o.v:null,ip=p&&p.v?p.cv/p.v:null;return`<tr><td><b>${esc(o.r)}</b></td><td class="r num">${o.ced.size}</td><td class="r num">${fN(o.q)}</td><td class="r num">${mk(o.v)}</td><td class="r num">${pc(tv?o.v/tv:null)}</td><td class="r num"><b>${pc(i)}</b></td><td class="r">${dpp(i!=null&&ip!=null?i-ip:null)}</td><td class="r num">${pc(o.v?o.c9/o.v:null)}</td><td class="r num">${pc(o.v?o.na/o.v:null)}</td><td class="r num">${pc(o.v?o.nc/o.v:null)}</td><td><button class="lk" data-act="verRot" data-v="${esc(o.r)}">filtrar carteiras</button></td></tr>`}).join("")}</tbody></table></div>
@@ -1305,7 +1412,7 @@ function vRotulos(){
 }
 function vSemana(){
   const seg0=monday(S.semRef),dias=[0,1,2,3,4,5,6].map(i=>addDays(seg0,i)),ds=dias.filter(d=>S.regs[d]);
-  const cods={};ds.forEach(d=>linhasDe(d).forEach(l=>{if(l.naCarteira)cods[l.cod]=l.nome}));
+  const cods={};ds.forEach(d=>linhasDe(d).forEach(l=>{if(l.naCarteira&&vis(l.cod))cods[l.cod]=l.nome}));
   const rows=Object.entries(cods).map(([cod,nome])=>{const v=ds.map(d=>linhasDe(d).find(l=>l.cod===cod));const f=v.find(Boolean),u=[...v].reverse().find(Boolean);
     const df=k=>f&&u&&f[k]!=null&&u[k]!=null?u[k]-f[k]:null;
     const mv=k=>ds.reduce((a,d)=>{const l=linhasDe(d).find(x=>x.cod===cod);return a+(l&&l.mov?l.mov[k][1]:0)},0);
@@ -1313,7 +1420,7 @@ function vSemana(){
   const cnt=f=>rows.filter(f).length;
   const semanas=[];let s=friday(today());for(let i=0;i<8;i++){semanas.unshift(s);s=addDays(s,-7)}
   const ultAte=sx=>regDatas().filter(d=>d>=addDays(sx,-4)&&d<=addDays(sx,2)).pop()||null;const sd=semanas.map(ultAte);
-  const hc={};sd.forEach(d=>d&&linhasDe(d).forEach(l=>{if(l.naCarteira)hc[l.cod]=l}));
+  const hc={};sd.forEach(d=>d&&linhasDe(d).forEach(l=>{if(l.naCarteira&&vis(l.cod))hc[l.cod]=l}));
   return`<fieldset class="box in"><legend>Semana de ${fds(seg0)} a ${fd(addDays(seg0,6))}</legend><div class="fbar"><button class="btn sm" data-act="semPrev">◀ Semana anterior</button><input class="inp" type="date" id="semRef" value="${S.semRef}"><button class="btn sm" data-act="semNext">Próxima semana ▶</button>
    <span class="muted">${ds.length} dias com base · índice em queda ${cnt(r=>r.di<0)} · em alta ${cnt(r=>r.di>0)} · mais Não atende ${cnt(r=>r.dna>0)} · mais Nada consta ${cnt(r=>r.dnc>0)} · mais C99 ${cnt(r=>r.dc99>0)}</span></div></fieldset>
   ${ds.length?`<div class="tw"><table class="grid" id="tSem"><thead><tr><th>Cedente</th>${ds.map(d=>`<th>${["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][toD(d).getDay()]} ${fds(d)}</th>`).join("")}<th>Δ índice</th><th>Δ Não atende</th><th>Δ Nada consta</th><th>Δ C99</th><th>Confirmados</th><th>Entraram</th><th>Saíram</th></tr></thead>
@@ -1325,7 +1432,7 @@ function vSemana(){
 
 /* ---------- CHAMADOS ---------- */
 function vChamados(){
-  const all=chList();const L=all.filter(c=>S.chF==="todos"||(S.chF==="abertos"?c.st!=="Fechado":c.st==="Fechado")).sort((a,b)=>(chDiasSem(b)??-1)-(chDiasSem(a)??-1)||(b.abertura||"").localeCompare(a.abertura||""));
+  const all=chList().filter(c=>vis(c.cod));const L=all.filter(c=>S.chF==="todos"||(S.chF==="abertos"?c.st!=="Fechado":c.st==="Fechado")).sort((a,b)=>(chDiasSem(b)??-1)-(chDiasSem(a)??-1)||(b.abertura||"").localeCompare(a.abertura||""));
   const tr=all.filter(c=>c.resposta).map(c=>bdays(c.abertura,c.resposta));const media=tr.length?tr.reduce((a,b)=>a+b,0)/tr.length:null;
   return`<div class="ptitle">Chamados ao comercial<span class="right"><button class="btn pri" data-act="newCh">Novo chamado</button></span></div>
   <fieldset class="box"><legend>Mostrar</legend><div class="fbar">${seg("chF",S.chF,[["abertos","Em aberto"],["fechados","Fechados"],["todos","Todos"]])}<span class="muted">Prazo de resposta: ${prazoCh()} dias úteis (Ajustes)</span></div></fieldset>
@@ -1339,7 +1446,7 @@ function vChamados(){
 /* ---------- PARECER SEMANAL ---------- */
 function dadosParecer(sx){
   const d=regDatas().filter(x=>x>=addDays(sx,-4)&&x<=addDays(sx,2)).pop()||null;
-  const L=linhasDe(d).filter(l=>l.naCarteira);const cd=L.filter(l=>l.ind!=null&&!l.naoAtuar);
+  const L=linhasDe(d).filter(l=>l.naCarteira&&vis(l.cod));const cd=L.filter(l=>l.ind!=null&&!l.naoAtuar);
   const media=cd.length?cd.reduce((a,l)=>a+l.ind,0)/cd.length:null;const dentro=cd.filter(l=>l.status!=="Abaixo"),aten=cd.filter(l=>l.status==="Atenção"),abaixo=cd.filter(l=>l.status==="Abaixo").sort((a,b)=>a.ind-b.ind);
   const resumo=cd.length?`Das ${cd.length} carteiras com dados, ${dentro.length} estão dentro da meta (${Math.round(dentro.length/cd.length*100)}%) e ${abaixo.length} estão abaixo. Índice médio: ${Math.round(media*100)}%.`:"Sem dados para esta semana.";
   return{d,cd,media,dentro,aten,abaixo,resumo};
@@ -1417,7 +1524,7 @@ function openQpick(){const P=S.Qpick;drawer("Qual cedente?",`<p class="muted">A 
 
 /* ---------- AJUSTES ---------- */
 function vAjustes(){
-  const c=S.cfg,ds=regDatas().slice().reverse();
+  const c=S.cfg,ds=regDatas().slice().reverse();const meuNomeBox=store.kind==="sb"?"":`<fieldset class="box"><legend>Meu nome na base</legend><p class="hint">Como o seu nome aparece na coluna Assistente da base. Serve para a visão “Minhas carteiras”.</p><div class="fbar"><input class="inp" id="c_meu" value="${esc(c.meuNome||"")}" placeholder="ex.: ERICK BRITO"><button class="btn sm" data-act="meuNomeSalvar">Salvar</button></div></fieldset>`;
   const pctIn=(id,v)=>`<input class="inp num" id="${id}" inputmode="decimal" value="${String(Math.round(v*1000)/10).replace(".",",")}" style="max-width:90px">`;
   const me=Object.entries(c.metasEspeciais||{}).map(([k,v])=>`${k}; ${String(Math.round(v.meta*1000)/10).replace(".",",")}%; ${v.texto||""}`).join("\n");
   const mt=Object.entries(c.metasTranchePropria||{}).map(([k,v])=>`${k}; ${String(Math.round(v.meta*1000)/10).replace(".",",")}%; ${v.aviso||""}`).join("\n");
@@ -1439,7 +1546,7 @@ function vAjustes(){
      <p class="hint">Mudanças valem a partir da próxima importação. As posições já registradas ficam como foram calculadas, igual ao REGISTRO DIÁRIO.</p></fieldset>
    </div>
    <div>
-    ${vEquipeHist()}${vConexao()}
+    ${meuNomeBox}${vEquipeHist()}${vConexao()}
     <fieldset class="box"><legend>Backup</legend><p class="hint">Um arquivo com tudo: anotações, chamados, posições, parâmetros e as bases título a título. Serve para guardar uma cópia ou levar os dados para outro lugar (por exemplo, da versão do Claude para o banco da equipe).</p>
      <div class="fbar"><button class="btn" data-act="backupBaixar">Baixar backup (.json)</button><label class="btn">Restaurar backup<input type="file" id="bkFile" accept=".json,application/json" hidden></label></div></fieldset>
     <fieldset class="box"><legend>Tabelas de referência</legend><table class="grid"><tbody>
@@ -1505,6 +1612,7 @@ function openCed(cod){
   const mot=Object.entries(l.motivos||{}).sort((a,b)=>b[1].v-a[1].v);
   const chs=chDoCed(cod).all;const diaSug=Core.diaSugerido(cod,l.risco||Core.riscoDe(cod,refObj()));const hist=(an.hist||[]).slice().reverse();
   drawer(nomeB(l.nome||cod),`
+   <fieldset class="box in"><legend>Responsável</legend><div class="fbar"><select class="inp" id="rsp_sel"><option value="">${esc(assDe(cod)?"Da base: "+nomeB(assDe(cod)):"Sem responsável")}</option>${nomesEquipe().map(n=>`<option value="${esc(n)}"${S.resp&&nrmN(S.resp[cod])===nrmN(n)?" selected":""}>${esc(nomeB(n))}</option>`).join("")}</select><button class="btn sm" data-act="rspSalvar" data-id="${cod}">Salvar responsável</button>${isMeu(cod)?'<span class="st info">é seu</span>':""}</div></fieldset>
    <div class="row-b"><span class="muted">${cod} · ${esc(l.risco||"")} · nível ${l.nivel||"—"} · meta ${pc(l.meta,0)} (${esc(l.origemMeta||"")})${g.cod.startsWith("G_")?" · grupo "+esc(nomeB(g.nome)):""}</span>${l.status?chip(l.status):""}</div>
    ${l.naCarteira?`<div class="kps sm">
     <div class="kp"><small>Valor aberto</small><b>${mk(l.valor)}</b>${c&&c.naCarteira?`<span>${dval(l.valor-c.valor)}</span>`:""}</div>
@@ -1614,18 +1722,21 @@ function openImport(){
    `<button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="doImport" id="i_go" disabled>Registrar posição</button>`);
 }
 async function addImportFiles(files){
-  $("#i_err").textContent="";$("#i_list").innerHTML='<p class="hint">Lendo arquivos…</p>';
-  try{const X=await XLSXlib();
+  const aviso=t=>{const el=$("#i_list");if(el)el.innerHTML=`<p class="hint carregando">${esc(t)}</p>`};
+  $("#i_err").textContent="";const go=$("#i_go");if(go)go.disabled=true;
+  try{
     for(const f of files){
-      const wb=await lerArquivo(f,false);const names=wb.SheetNames,up=names.map(n=>n.toUpperCase());
+      aviso(`Lendo “${f.name}”…`);
+      const pl=await lerPlanilha(f,aviso);const names=Object.keys(pl.sheets),up=names.map(n=>n.toUpperCase());
+      aviso("Organizando os títulos…");await pausa();
       const dn=dataDoNome(f.name);if(dn)$("#i_data").value=dn;
-      const aoa=n=>X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null,blankrows:false});
+      const aoa=n=>pl.sheets[n]||[];
       const raw=n=>{const a=aoa(n);const h=Core.findHeader(a,["Cod. Cedente","Motivo Entrega"]);return h<0?null:{hdr:a[h],rows:a.slice(h+1).filter(r=>r&&r.some(v=>v!=null&&v!==""))}};
       const iC=up.indexOf("BASE CARTEIRAS"),iT=up.indexOf("BASE - TRANCHE");
       if(iC>=0||iT>=0){
         if(iC>=0){const b=Core.parseBase(aoa(names[iC]));if(b&&b.rows.length)D.files.push({nome:f.name+" › BASE CARTEIRAS",tipo:"car",b,raw:raw(names[iC])})}
         if(iT>=0){const b=Core.parseBase(aoa(names[iT]));if(b&&b.rows.length)D.files.push({nome:f.name+" › BASE - TRANCHE",tipo:"tra",b,raw:raw(names[iT])})}
-        D.wbRef=wb;
+        D.refGet=n=>{const k=names.find(s=>s.toUpperCase()===n);return k?pl.sheets[k]:null};D.wbRef=true;
         const dd=up.indexOf("DATA DA BASE");if(dd>=0&&!dn){const a=aoa(names[dd]);for(const r of a)for(const v of r||[])if(typeof v==="number"&&v>40000&&v<60000){$("#i_data").value=Core.serialISO(v);break}}
       }else{
         let ok=false;for(const n of names){let b=null;try{b=Core.parseBase(aoa(n))}catch(e){}if(b&&b.rows.length){D.files.push({nome:f.name,tipo:/tranche/i.test(f.name+n)?"tra":"car",b,raw:raw(n)});ok=true;break}}
@@ -1661,13 +1772,13 @@ async function doImport(){
   if(data!==P.data){await drawImport();return doImport()}
   const go=$("#i_go");go.disabled=true;go.textContent="Registrando…";
   try{
-    if(D.wbRef&&$("#i_ref")&&$("#i_ref").checked){await importarReferencias(D.wbRef);await drawImport()}
+    if(D.wbRef&&$("#i_ref")&&$("#i_ref").checked){go.textContent="Atualizando referências…";await importarReferencias(D.refGet);await drawImport()}
     const Pp=D.parsed;let temBase=store.remote();
     if(!temBase)temBase=await idb.put(data,{car:Pp.carB,tra:Pp.traB});
     if(temBase){
       const docs=[];if(Pp.car)docs.push(...baseChunks(data,"car",Pp.carB));if(Pp.tra||(!Pp.tra&&Pp.traB&&!S.regs[data]))docs.push(...baseChunks(data,"tra",Pp.traB));
       const old=await store.baseDocs(data);const keep=new Set(docs.map(d=>d.id));
-      for(const d of docs)await store.set("base",d.id,d.data);
+      for(let i=0;i<docs.length;i++){go.textContent=`Salvando ${i+1} de ${docs.length}…`;await store.set("base",docs[i].id,docs[i].data);await pausa()}
       for(const o of old)if(!keep.has(o.id)&&((Pp.car&&o.kind==="car")||(Pp.tra&&o.kind==="tra")))await store.del("base",o.id);
     }
     const prevReg=S.regs[data]||{};
@@ -1681,11 +1792,14 @@ async function doImport(){
     }else{go.disabled=false;go.textContent="Registrar posição"}
   }catch(e){$("#i_err").textContent=e.message||"Erro ao registrar.";go.disabled=false;go.textContent="Registrar posição"}
 }
-async function importarReferencias(wb){
-  const X=window.XLSX;const get=n=>{const k=wb.SheetNames.find(s=>s.toUpperCase()===n);return k?X.utils.sheet_to_json(wb.Sheets[k],{header:1,raw:true,defval:null}):null};const n=[];
+async function importarReferencias(get){const n=[];
   const rp=get("RISCO PRINCING");if(rp){const m={},g={};rp.slice(1).forEach(r=>{if(r[1]==null)return;const k=String(r[1]);if(!m[k])m[k]=r[4];if(r[0]&&!g[k])g[k]=[String(r[0]),String(r[2]||"")]});await store.set("cfg","risco",{map:m});await store.set("cfg","grupos",{map:g});n.push("risco e grupos")}
   const lt=get("LIMITE - TRANCHE");if(lt){const m={};lt.slice(1).forEach(r=>{if(!r[0])return;const s=String(r[0]),cod=s.split(" - ")[0].trim();if(!m[cod])m[cod]={nome:s.slice(cod.length+3).trim(),regional:r[1]||"",assistente:r[2]||"",fundo:r[3]||"",limite:r[4]}});await store.set("cfg","limites",{map:m});n.push("limites")}
-  const ca=get("CARACTERISTICA");if(ca){for(const r of ca.slice(4)){if(r[1]==null)continue;const t=String(r[4]||"").replace(/_x000D_/g,"").replace(/[\r\n]+/g," ");const cod=String(r[1]);if(!S.car[cod]||S.car[cod].texto!==t)await store.set("caract",cod,{regional:r[0]||"",texto:t})}n.push("característica")}
+  const ca=get("CARACTERISTICA");if(ca){const muda=[];for(const r of ca.slice(4)){if(r[1]==null)continue;const t=String(r[4]||"").replace(/_x000D_/g,"").replace(/[\r\n]+/g," ");const cod=String(r[1]);if(!S.car[cod]||S.car[cod].texto!==t)muda.push({col:"caract",id:cod,data:{regional:r[0]||"",texto:t}})}
+    if(store.kind==="sb"){for(let i=0;i<muda.length;i+=100){const{error}=await SBC.cli.from("docs").upsert(muda.slice(i,i+100));if(error)throw error;muda.slice(i,i+100).forEach(d=>store.apply(d.col,d.id,d.data))}}
+    else if(store.kind==="local"){muda.forEach(d=>store.apply(d.col,d.id,d.data));store.persist()}
+    else{for(let i=0;i<muda.length;i++){await store.set(muda[i].col,muda[i].id,muda[i].data);if(i%20===19)await pausa()}}
+    n.push("característica")}
   const cfg={...S.cfg};let mud=false;
   const me=get("METAS ESPECIAIS");if(me){const m={};me.slice(1).forEach(r=>{if(r[0]!=null&&r[2]!=null&&r[2]!=="")m[String(r[0])]={meta:+r[2],texto:r[3]||""}});cfg.metasEspeciais=m;mud=true}
   const mt=get("METAS TRANCHE");if(mt){const v=i=>mt[i]&&mt[i][2];if(v(1)!=null){cfg.trAlto=+v(1);cfg.trMedio=+v(2);cfg.trBaixo=+v(3);cfg.trSem=+v(4)}const m={};mt.slice(1).forEach(r=>{if(r[4]!=null&&r[4]!==""&&r[6]!=null&&r[6]!=="")m[String(r[4])]={meta:+r[6],aviso:r[7]||""}});cfg.metasTranchePropria=m;mud=true}
@@ -1725,11 +1839,15 @@ document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act,id=el.dataset.id;
   if(a!=="arm"&&S.armed){S.armed=null;$$(".btn.armed").forEach(b=>{b.classList.remove("armed");b.textContent=b.dataset.label||b.textContent})}
   switch(a){
-    case"go":location.hash=el.dataset.v;break;
+    case"go":location.hash=el.dataset.v;S.menuAberto=false;break;
+    case"menu":S.menuAberto=false;S.escolher=true;render();window.scrollTo(0,0);break;
+    case"visao":setVisao(el.dataset.v);break;
+    case"rspSalvar":{const v=$("#rsp_sel").value;const m={...S.resp};if(v)m[id]=v;else delete m[id];S.resp=m;await safe(store.set("cfg","responsaveis",{map:m}),"Responsável salvo");openCed(id);break}
+    case"meuNomeSalvar":{const v=$("#c_meu").value.trim();await safe(store.set("cfg","geral",{...S.cfg,meuNome:v}),"Nome salvo");break}
     case"authTab":S.auth={tab:el.dataset.v,email:(S.auth||{}).email||""};render();break;
     case"authReenviar":authReenviar();break;
     case"authRetry":if(SBC.user)sbEntrar(SBC.user);break;
-    case"sair":if(SBC.cli)await SBC.cli.auth.signOut();S.auth={tab:"entrar"};S.mode="login";render();break;
+    case"sair":try{sessionStorage.removeItem("mesa_escolheu")}catch(e){}S.escolher=true;if(SBC.cli)await SBC.cli.auth.signOut();S.auth={tab:"entrar"};S.mode="login";render();break;
     case"trocarSenha":openTrocarSenha();break;
     case"mbAdd":membroAdd();break;
     case"mbGerar":{const f=$("#mb_senha");if(f)f.value=senhaProvisoria();break}
@@ -1791,7 +1909,8 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("submit",e=>{const f=e.target;if(!f||!f.id)return;e.preventDefault();if(f.id==="fTroca")trocarSenha();else authSubmit(f.id)});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&D)closeDrawer()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(D)closeDrawer();if(S.menuAberto){S.menuAberto=false;render()}}});
+document.addEventListener("click",e=>{if(S.menuAberto&&!e.target.closest("#menuPop")&&!e.target.closest('[data-act="menu"]')){S.menuAberto=false;render()}},true);
 document.addEventListener("input",e=>{
   const t=e.target;
   if(t.id==="busca"){S.busca=t.value;render()}
@@ -1819,7 +1938,7 @@ document.addEventListener("change",async e=>{
   if(t.id==="i_data")drawImport();
   if(t.id==="i_keepTr"){D.keepTr=t.checked;drawImport()}
   if(t.dataset.ftipo!=null){D.files[+t.dataset.ftipo].tipo=t.value;drawImport()}
-  if(t.id==="refFile"&&t.files[0]){try{const wb=await lerArquivo(t.files[0],false);await importarReferencias(wb)}catch(err){toast(err.message)}t.value=""}
+  if(t.id==="refFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);const ks=Object.keys(pl.sheets);await importarReferencias(n=>{const k=ks.find(s=>s.toUpperCase()===n);return k?pl.sheets[k]:null})}catch(err){toast(err.message)}t.value=""}
   if(t.id==="q_file"&&t.files[0]){try{const wb=await lerArquivo(t.files[0],true);let b=null;for(const n of wb.SheetNames){const aoa=window.XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null,blankrows:false});
       for(let i=0;i<Math.min(15,aoa.length);i++){const H=(aoa[i]||[]).map(x=>String(x||"").trim().toUpperCase());if(H.includes("VLR. ABERTO")&&(H.includes("MOTIVO ENTREGA")||H.includes("STATUS CHECAGEM"))){b={hdr:aoa[i],rows:aoa.slice(i+1).filter(r=>r&&r.some(v=>v!=null&&v!==""))};break}}if(b)break}
     if(!b)throw new Error("Não achei um cabeçalho com Vlr. Aberto e Motivo Entrega no arquivo.");qIniciar(b.hdr,b.rows,t.files[0].name)}catch(err){toast(err.message)}t.value=""}
