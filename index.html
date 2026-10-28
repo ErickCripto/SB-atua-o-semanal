@@ -170,6 +170,7 @@ table.grid{border-collapse:collapse;width:100%}
 .pre{white-space:pre-wrap;font-family:Consolas,"Courier New",monospace;font-size:12px;background:#F7F9F8;border:1px solid var(--line-l);padding:8px;margin:0;max-height:320px;overflow:auto;overflow-wrap:anywhere}
 .pre-w{white-space:pre-wrap;overflow-wrap:anywhere}
 .gwrap{border:1px solid var(--line,#C9D1CE);border-radius:4px;overflow:hidden;background:#f6f5f2}.gframe{display:block;width:100%;height:calc(100vh - 230px);min-height:560px;border:0}
+.voltar{display:inline-flex;align-items:center;gap:4px;margin:0 0 8px;padding:5px 12px 5px 8px;border:1px solid #9FD0BE;border-radius:16px;background:#fff;color:#1F5C4B;font-weight:bold;cursor:pointer;font:inherit;font-weight:bold}.voltar:hover{background:#E3F1EC}
 .umenu{position:relative;display:inline-block;outline:none}
 .uchip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border:1px solid #9FD0BE;border-radius:18px;background:#fff;cursor:pointer}
 .uav{width:24px;height:24px;border-radius:50%;background:var(--tab1,#1F7A62);color:#fff;font-weight:bold;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
@@ -1463,8 +1464,9 @@ function render(){
   const mm=$("#menuModo");if(mm)mm.textContent=S.visao==="pessoa"?"PESSOA":S.visao==="minha"?"MINHAS":"EQUIPE";
   const vb=$("#visaoBox");if(vb)vb.innerHTML=!["db","sb","local"].includes(S.mode)?"":`Visão: <button class="lk strong" data-act="menu">${S.visao==="pessoa"?"Carteira de "+esc(nomeB(S.visaoPessoa)):S.visao==="minha"?"Minhas carteiras":"Equipe toda"}</button>`;
   const mp=$("#menuPop");if(mp){mp.hidden=!S.menuAberto;if(S.menuAberto)mp.innerHTML=vMenu()}
-  const escolhendo=S.escolher&&["db","sb","local"].includes(S.mode);
-  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||escolhendo;
+  const admPag=S.view==="ajustes"||S.view==="controle";
+  const escolhendo=S.escolher&&!admPag&&["db","sb","local"].includes(S.mode);
+  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||escolhendo||admPag;
   if(escolhendo){$("#main").innerHTML=vEscolha();return}
   if(S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"){$("#main").innerHTML=vLogin();const f=$("#main input:not([type=hidden])");if(f&&!$("#main").contains(document.activeElement))f.focus();return}
   const u=ultimo();$("#basePos").textContent=u?"Base de "+fd(u)+(S.cfg.regional?" · Regional "+S.cfg.regional:""):"Nenhuma base";
@@ -1474,7 +1476,7 @@ function render(){
   const banner=avisoVisao+(S.mode==="local"?'<div class="banner">Abra pelo Claude (logado) para salvar na sua conta. Agora os dados ficam só neste navegador.</div>':"");
   const v={geral:vGeral,controle:vControle,anotacoes:vAnotacoes,atuacao:vAtuacao,carteiras:vCarteiras,tranche:vTranche,relatorios:vRelatorios,chamados:vChamados,parecer:vParecer,qprof:vQprof,ajustes:vAjustes}[S.view]||vAtuacao;
   const keep=ae&&ae.id&&$("#main").contains(ae)?{id:ae.id,pos:ae.selectionStart}:null;
-  const html=banner+v();
+  const html=(admPag?`<button class="voltar" data-act="voltarAdm" title="Voltar">← Voltar</button>`:banner)+v();
   if(S.view==="geral"&&S.geralKeyOk){S.geralKeyOk=false;return}
   $("#main").innerHTML=html;
   if(S.view==="geral")geralMontarFrame();
@@ -2387,7 +2389,8 @@ document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act,id=el.dataset.id;
   if(a!=="arm"&&S.armed){S.armed=null;$$(".btn.armed").forEach(b=>{b.classList.remove("armed");b.textContent=b.dataset.label||b.textContent})}
   switch(a){
-    case"go":if(el.dataset.g){S.gSub=el.dataset.g;if(S.view==="geral"){location.hash=el.dataset.h;render();break}location.hash=el.dataset.h;break}location.hash=el.dataset.v;S.menuAberto=false;if(el.classList.contains("uit")&&document.activeElement)document.activeElement.blur();break;
+    case"voltarAdm":{const h=S.voltarHash&&!["ajustes","controle"].includes(S.voltarHash)?S.voltarHash:(S.visao==="equipe"?"pesquisar":"atuacao");if(S.escolher&&!sessionStorage.getItem("mesa_escolheu"))S.escolher=true;location.hash=h;break}
+    case"go":if(["ajustes","controle"].includes(el.dataset.v)&&!["ajustes","controle"].includes(S.view))S.voltarHash=location.hash.slice(1)||S.view;if(el.dataset.g){S.gSub=el.dataset.g;if(S.view==="geral"){location.hash=el.dataset.h;render();break}location.hash=el.dataset.h;break}location.hash=el.dataset.v;S.menuAberto=false;if(el.classList.contains("uit")&&document.activeElement)document.activeElement.blur();break;
     case"verPessoa":setVisao("pessoa",el.dataset.v);S.view="carteiras";location.hash="carteiras";render();break;
     case"voltarControle":setVisao("equipe");S.view="controle";location.hash="controle";render();break;
     case"ctlP":S.ctlP=el.dataset.v;S.ctl=null;render();break;
