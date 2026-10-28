@@ -858,6 +858,7 @@ async function sbEntrar(user){
     const{data:mem,error}=await SBC.cli.from("membros").select("*");if(error)throw error;
     SBC.membros=mem||[];SBC.eu=SBC.membros.find(m=>String(m.email).toLowerCase()===String(user.email).toLowerCase())||null;
     if(!SBC.eu){S.mode="semacesso";render();return}
+    if(user.user_metadata&&user.user_metadata.trocar_senha){S.mode="trocar";S.auth={};render();return}
     for(const col of["cfg","caract","anot","chamados","parecer","feito"]){const rows=await sbTodos(()=>SBC.cli.from("docs").select("id,data").eq("col",col));rows.forEach(r=>store.apply(col,r.id,r.data))}
     const rg=await SBC.cli.from("docs").select("id,data").eq("col","reg").order("id",{ascending:false}).limit(70);if(rg.error)throw rg.error;(rg.data||[]).forEach(r=>store.apply("reg",r.id,r.data));
     const qp=await SBC.cli.from("docs").select("id,data").eq("col","qprof").order("updated_at",{ascending:false}).limit(60);(qp.data||[]).forEach(r=>store.apply("qprof",r.id,r.data));
@@ -868,9 +869,10 @@ async function sbEntrar(user){
 const vIn=id=>{const el=document.getElementById(id);return el?el.value:""};
 function trErr(e){const m=String(e&&e.message||e||"");
   if(/invalid login credentials/i.test(m))return"E-mail ou senha incorretos.";
-  if(/email not confirmed/i.test(m))return"Este e-mail ainda não foi confirmado. Use “Criar acesso” para receber o código de novo.";
+  if(/email not confirmed/i.test(m))return"Este acesso ainda não foi ativado. Fale com o administrador da equipe.";
   if(/expired|invalid/i.test(m)&&/token|otp|code/i.test(m))return"Código inválido ou vencido. Peça um novo código.";
   if(/rate limit|security purposes|too many/i.test(m))return"Muitas tentativas seguidas. Espere um minuto e tente de novo.";
+  if(/não foi liberado|nao foi liberado|hook/i.test(m))return"Este e-mail não foi liberado pelo administrador.";
   if(/already registered|already exists/i.test(m))return"Este e-mail já tem acesso. Use “Entrar” ou “Esqueci a senha”.";
   if(/password should be|weak password/i.test(m))return"Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.";
   if(/fetch|network/i.test(m))return"Sem conexão com o banco. Verifique a internet.";
@@ -883,17 +885,15 @@ function vLogin(){
   const A=S.auth||(S.auth={tab:"entrar"});const t=A.tab||"entrar";
   const box=(body)=>`<div class="login"><div class="lwin"><div class="win-h"><span>Mesa de Carteiras · Acesso</span></div><div class="lbody">${body}</div></div></div>`;
   if(S.mode==="semacesso")return box(`<p><b>${esc(SBC.user&&SBC.user.email)}</b> entrou, mas ainda não está liberado na equipe.</p><p class="muted">Peça para o administrador incluir este e-mail em Ajustes › Equipe. Depois, clique em “Tentar de novo”.</p><div class="fbar"><button class="btn pri" data-act="authRetry">Tentar de novo</button><button class="btn" data-act="sair">Sair</button></div>`);
-  const tabs=sub([["entrar","Entrar"],["criar","Criar acesso"],["esqueci","Esqueci a senha"]],t,"authTab");
+  if(S.mode==="trocar")return box(`<div class="pbody"><p>Olá${SBC.user&&SBC.user.user_metadata&&SBC.user.user_metadata.nome?", <b>"+esc(SBC.user.user_metadata.nome)+"</b>":""}! Este é o seu primeiro acesso. Troque a senha provisória por uma senha só sua.</p>${A.err?`<div class="warn-box">${esc(A.err)}</div>`:""}
+   <form id="fPrimeira" class="form"><label class="fl">Nova senha (mínimo 8 caracteres)<input class="inp" id="au_s1" type="password" autocomplete="new-password"></label><label class="fl">Repita a nova senha<input class="inp" id="au_s2" type="password" autocomplete="new-password"></label>
+   <button class="btn pri" type="submit"${A.busy?" disabled":""}>${A.busy?"Salvando…":"Salvar senha e entrar"}</button><button type="button" class="lk" data-act="sair">sair</button></form></div>`);
+  const tabs=sub([["entrar","Entrar"],["esqueci","Esqueci a senha"]],t==="criar"?"entrar":t,"authTab");
   const msg=(A.err?`<div class="warn-box">${esc(A.err)}</div>`:"")+(A.msg?`<div class="ok-box">${esc(A.msg)}</div>`:"");
   const dis=A.busy?" disabled":"";let f="";
   if(t==="entrar")f=`<form id="fEntrar" class="form"><label class="fl">E-mail<input class="inp" id="au_email" type="email" autocomplete="username" value="${esc(A.email||"")}"></label>
    <label class="fl">Senha<input class="inp" id="au_senha" type="password" autocomplete="current-password"></label><button class="btn pri" type="submit"${dis}>${A.busy?"Entrando…":"Entrar"}</button>
-   <p class="small muted">Esqueceu a senha? Use a aba “Esqueci a senha” e receba um código no e-mail.</p></form>`;
-  else if(t==="criar"&&!A.step)f=`<form id="fCriar" class="form"><label class="fl">Nome<input class="inp" id="au_nome" autocomplete="name" value="${esc(A.nome||"")}"></label><label class="fl">E-mail<input class="inp" id="au_email" type="email" autocomplete="username" value="${esc(A.email||"")}"></label>
-   <label class="fl">Senha (mínimo 8 caracteres)<input class="inp" id="au_s1" type="password" autocomplete="new-password"></label><label class="fl">Repita a senha<input class="inp" id="au_s2" type="password" autocomplete="new-password"></label>
-   <button class="btn pri" type="submit"${dis}>${A.busy?"Criando…":"Criar acesso"}</button><p class="small muted">Vamos mandar um código para o seu e-mail para confirmar. Os dados da equipe só aparecem para e-mails liberados pelo administrador.</p></form>`;
-  else if(t==="criar")f=`<form id="fConfirmar" class="form"><p>Enviamos um código para <b>${esc(A.email)}</b>. Digite abaixo para ativar o acesso.</p><label class="fl">Código do e-mail<input class="inp code" id="au_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="10"></label>
-   <button class="btn pri" type="submit"${dis}>${A.busy?"Confirmando…":"Confirmar"}</button><div class="fbar"><button type="button" class="lk" data-act="authReenviar">Reenviar código</button><button type="button" class="lk" data-act="authTab" data-v="criar">Trocar e-mail</button></div></form>`;
+   <p class="small muted">Esqueceu a senha? Use a aba “Esqueci a senha” e receba um código no e-mail. O acesso é criado pelo administrador da equipe.</p></form>`;
   else if(!A.step)f=`<form id="fEsqueci" class="form"><p class="small">Digite o e-mail do seu cadastro. Vamos mandar um código para você criar uma senha nova.</p><label class="fl">E-mail<input class="inp" id="au_email" type="email" autocomplete="username" value="${esc(A.email||"")}"></label>
    <button class="btn pri" type="submit"${dis}>${A.busy?"Enviando…":"Enviar código"}</button></form>`;
   else f=`<form id="fNova" class="form"><p>Se <b>${esc(A.email)}</b> estiver cadastrado, chegou um código no e-mail (confira também o spam).</p><label class="fl">Código do e-mail<input class="inp code" id="au_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="10"></label>
@@ -906,16 +906,10 @@ async function authSubmit(id){
   const busy=()=>{S.auth={...S.auth,busy:true,err:"",msg:""};render()};
   try{
     if(id==="fEntrar"){const email=vIn("au_email").trim().toLowerCase(),senha=vIn("au_senha");if(!emailOk(email)||!senha)return authErr("Informe o e-mail e a senha.");
-      S.auth={...A,email};busy();const{data,error}=await cli.auth.signInWithPassword({email,password:senha});if(error){if(/not confirmed/i.test(error.message)){S.auth={tab:"criar",step:1,email};await cli.auth.resend({type:"signup",email}).catch(()=>{});return authErr(trErr(error))}return authErr(trErr(error))}
+      S.auth={...A,email};busy();const{data,error}=await cli.auth.signInWithPassword({email,password:senha});if(error)return authErr(trErr(error));
       S.auth={tab:"entrar"};await sbEntrar(data.user)}
-    else if(id==="fCriar"){const nome=vIn("au_nome").trim(),email=vIn("au_email").trim().toLowerCase(),s1=vIn("au_s1"),s2=vIn("au_s2");
-      if(!nome)return authErr("Informe o seu nome.");if(!emailOk(email))return authErr("E-mail inválido.");const e=senhaOk(s1,s2);if(e)return authErr(e);
-      S.auth={...A,nome,email};busy();const{data,error}=await cli.auth.signUp({email,password:s1,options:{data:{nome}}});if(error)return authErr(trErr(error));
-      if(data.session){S.auth={tab:"entrar"};await sbEntrar(data.user);return}
-      S.auth={tab:"criar",step:1,email,msg:"Código enviado para "+email+"."};render()}
-    else if(id==="fConfirmar"){const token=vIn("au_cod").replace(/\D/g,"");if(token.length<6)return authErr("Digite o código de 6 dígitos que chegou no e-mail.");busy();
-      let r=await cli.auth.verifyOtp({email:A.email,token,type:"signup"});if(r.error)r=await cli.auth.verifyOtp({email:A.email,token,type:"email"});if(r.error)return authErr(trErr(r.error));
-      S.auth={tab:"entrar"};toast("Acesso confirmado");await sbEntrar(r.data.user)}
+    else if(id==="fPrimeira"){const s1=vIn("au_s1"),s2=vIn("au_s2"),e=senhaOk(s1,s2);if(e)return authErr(e);busy();
+      const{data,error}=await cli.auth.updateUser({password:s1,data:{trocar_senha:false}});if(error)return authErr(trErr(error));S.auth={tab:"entrar"};toast("Senha salva");await sbEntrar(data.user)}
     else if(id==="fEsqueci"){const email=vIn("au_email").trim().toLowerCase();if(!emailOk(email))return authErr("E-mail inválido.");S.auth={...A,email};busy();
       const{error}=await cli.auth.resetPasswordForEmail(email);if(error)return authErr(trErr(error));S.auth={tab:"esqueci",step:1,email};render()}
     else if(id==="fNova"){const token=vIn("au_cod").replace(/\D/g,""),s1=vIn("au_s1"),s2=vIn("au_s2");if(token.length<6)return authErr("Digite o código de 6 dígitos que chegou no e-mail.");const e=senhaOk(s1,s2);if(e)return authErr(e);busy();
@@ -923,14 +917,28 @@ async function authSubmit(id){
       const u=await cli.auth.updateUser({password:s1});if(u.error)return authErr(trErr(u.error));S.auth={tab:"entrar"};toast("Senha alterada");await sbEntrar(v.data.user)}
   }catch(e){authErr(trErr(e))}
 }
-async function authReenviar(){const A=S.auth||{};try{const r=A.tab==="criar"?await SBC.cli.auth.resend({type:"signup",email:A.email}):await SBC.cli.auth.resetPasswordForEmail(A.email);if(r&&r.error)return authErr(trErr(r.error));S.auth={...A,err:"",msg:"Código reenviado para "+A.email+"."};render()}catch(e){authErr(trErr(e))}}
+async function authReenviar(){const A=S.auth||{};try{const r=await SBC.cli.auth.resetPasswordForEmail(A.email);if(r&&r.error)return authErr(trErr(r.error));S.auth={...A,err:"",msg:"Código reenviado para "+A.email+"."};render()}catch(e){authErr(trErr(e))}}
 function openTrocarSenha(){D={kind:"senha"};drawer("Alterar senha",`<form id="fTroca" class="form"><label class="fl">Nova senha (mínimo 8 caracteres)<input class="inp" id="ts_1" type="password" autocomplete="new-password"></label><label class="fl">Repita a nova senha<input class="inp" id="ts_2" type="password" autocomplete="new-password"></label><div class="err" id="ts_err"></div><button class="btn pri" type="submit">Salvar nova senha</button></form>`,"")}
 async function trocarSenha(){const s1=vIn("ts_1"),s2=vIn("ts_2"),e=senhaOk(s1,s2);if(e){$("#ts_err").textContent=e;return}const{error}=await SBC.cli.auth.updateUser({password:s1});if(error){$("#ts_err").textContent=trErr(error);return}closeDrawer();toast("Senha alterada")}
 
 /* equipe, histórico e backup */
 async function membrosRecarregar(){const{data}=await SBC.cli.from("membros").select("*").order("email");SBC.membros=data||[];render()}
-async function membroAdd(){const email=vIn("mb_email").trim().toLowerCase(),nome=vIn("mb_nome").trim(),admin=$("#mb_admin").checked;if(!emailOk(email)){toast("E-mail inválido.");return}
-  const{error}=await SBC.cli.from("membros").upsert({email,nome,admin});if(error){toast("Não foi possível incluir ("+error.message+").");return}toast(email+" liberado");membrosRecarregar()}
+function senhaProvisoria(){const a="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";const r=new Uint32Array(10);crypto.getRandomValues(r);return[...r].map(x=>a[x%a.length]).join("")}
+async function membroAdd(){
+  const email=vIn("mb_email").trim().toLowerCase(),nome=vIn("mb_nome").trim(),senha=vIn("mb_senha"),admin=$("#mb_admin").checked,btn=$('[data-act="mbAdd"]');
+  if(!emailOk(email)){toast("E-mail inválido.");return}if(!nome){toast("Informe o nome da pessoa.");return}if(senha.length<8){toast("A senha provisória precisa ter pelo menos 8 caracteres.");return}
+  if(btn){btn.disabled=true;btn.textContent="Criando…"}
+  try{
+    const m=await SBC.cli.from("membros").upsert({email,nome,admin});if(m.error)throw m.error;
+    const c=SBC.conf();const tmp=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"mesa-criar-acesso"}});
+    const{data,error}=await tmp.auth.signUp({email,password:senha,options:{data:{nome,trocar_senha:true}}});if(error)throw error;
+    const ja=data&&data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0;
+    await membrosRecarregar();const txt="Site: "+location.origin+location.pathname+"\nE-mail: "+email+"\nSenha provisória: "+senha;
+    drawer(ja?"Pessoa já tinha acesso":"Acesso criado",ja?`<p><b>${esc(email)}</b> já tinha acesso e continua com a senha dela. Se esqueceu, ela usa “Esqueci a senha” na tela de entrada.</p>`:
+     `<p>Acesso criado para <b>${esc(nome)}</b>. Passe estes dados para a pessoa por mensagem direta:</p><pre class="pre">${esc(txt)}</pre><button class="btn pri" data-act="copyTxt" data-t="${esc(txt)}">Copiar</button><p class="hint">No primeiro acesso o site pede para ela trocar a senha provisória por uma senha própria.</p>`,`<button class="btn" data-act="close">Fechar</button>`);
+  }catch(e){toast("Não foi possível criar o acesso: "+trErr(e))}
+  finally{const b=$('[data-act="mbAdd"]');if(b){b.disabled=false;b.textContent="Criar acesso"}}
+}
 async function membroDel(email){const{error}=await SBC.cli.from("membros").delete().eq("email",email);if(error){toast("Não foi possível remover ("+error.message+").");return}toast("Acesso removido");membrosRecarregar()}
 async function membroAdmin(email,on){const{error}=await SBC.cli.from("membros").update({admin:on}).eq("email",email);if(error){toast(error.message);return}membrosRecarregar()}
 async function histCarregar(){const{data,error}=await SBC.cli.from("historico").select("*").order("alterado_em",{ascending:false}).limit(150);if(error){toast(error.message);return}SBC.hist=data||[];render()}
@@ -967,10 +975,12 @@ async function backupAplicar(){
 }
 function vEquipeHist(){
   if(store.kind!=="sb")return"";const adm=SBC.eu&&SBC.eu.admin;const H=SBC.hist;
-  return`<fieldset class="box"><legend>Equipe (${SBC.membros.length})</legend><div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>E-mail</th><th>Nome</th><th>Administrador</th><th>Liberado em</th><th></th></tr></thead><tbody>
+  return`${adm?`<fieldset class="box"><legend>Equipe · criar e gerenciar acessos (${SBC.membros.length})</legend><div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>E-mail</th><th>Nome</th><th>Administrador</th><th>Liberado em</th><th></th></tr></thead><tbody>
     ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td>${adm&&!eu?delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
-    ${adm?`<div class="fgrid" style="margin-top:8px"><label class="fl">E-mail<input class="inp" id="mb_email" type="email"></label><label class="fl">Nome<input class="inp" id="mb_nome"></label><label class="ck"><input type="checkbox" id="mb_admin"> administrador</label><button class="btn pri" data-act="mbAdd">Liberar acesso</button></div>
-    <p class="hint">Depois de liberar, a pessoa entra no site, clica em “Criar acesso” com este e-mail e confirma com o código que chega.</p>`:'<p class="hint">Só administradores incluem ou removem pessoas.</p>'}</fieldset>
+    <div class="fgrid" style="margin-top:8px"><label class="fl">Nome<input class="inp" id="mb_nome"></label><label class="fl">E-mail<input class="inp" id="mb_email" type="email"></label>
+     <label class="fl">Senha provisória<span class="fbar" style="margin:0"><input class="inp mono" id="mb_senha" value="${esc(senhaProvisoria())}" style="max-width:150px"><button class="btn sm" data-act="mbGerar" type="button">gerar outra</button></span></label>
+     <label class="ck"><input type="checkbox" id="mb_admin"> administrador</label><button class="btn pri" data-act="mbAdd">Criar acesso</button></div>
+    <p class="hint">Só administradores veem esta parte. A pessoa entra com o e-mail e a senha provisória, e o site pede para ela criar a senha dela no primeiro acesso. Remover alguém daqui bloqueia o acesso aos dados na hora.</p></fieldset>`:""}
    <fieldset class="box"><legend>Histórico de alterações</legend><p class="hint">Toda alteração ou exclusão guarda a versão anterior. Aqui aparecem as últimas 150, com quem alterou e quando; “Restaurar” volta para aquela versão.</p>
     ${H?`<div class="tw" style="max-height:420px"><table class="grid"><thead><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Ação</th><th>Versão anterior</th><th></th></tr></thead><tbody>${H.map(h=>`<tr><td class="num">${new Date(h.alterado_em).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}</td><td class="small">${esc(h.alterado_por||"")}</td><td class="wrap">${esc(histRotulo(h))}</td><td>${h.acao==="delete"?'<span class="st bad">excluído</span>':'<span class="st neutral">alterado</span>'}</td><td class="wrap small">${esc(histResumo(h))}</td><td>${delBtn("hist:"+h.hid,"Restaurar","sm")}</td></tr>`).join("")||'<tr><td colspan="6" class="muted">Nenhuma alteração ainda.</td></tr>'}</tbody></table></div><div class="fbar"><button class="btn sm" data-act="histLoad">Atualizar</button></div>`:'<button class="btn" data-act="histLoad">Carregar alterações</button>'}</fieldset>`;
 }
@@ -985,8 +995,8 @@ function render(){
   $$(".tab").forEach(t=>{if(t.dataset.v===S.view)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
   $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"?"Aguardando acesso":"Conectando…";
   const ub=$("#userBox");if(ub)ub.innerHTML=S.mode==="sb"&&SBC.user?`${esc(SBC.eu&&SBC.eu.nome||SBC.user.email)} · <button class="lk" data-act="trocarSenha">alterar senha</button> · <button class="lk" data-act="sair">sair</button>`:"";
-  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso";
-  if(S.mode==="login"||S.mode==="semacesso"){$("#main").innerHTML=vLogin();const f=$("#main input:not([type=hidden])");if(f&&!$("#main").contains(document.activeElement))f.focus();return}
+  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar";
+  if(S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"){$("#main").innerHTML=vLogin();const f=$("#main input:not([type=hidden])");if(f&&!$("#main").contains(document.activeElement))f.focus();return}
   const u=ultimo();$("#basePos").textContent=u?"Base de "+fd(u)+(S.cfg.regional?" · Regional "+S.cfg.regional:""):"Nenhuma base";
   if(S.mode==="loading"){$("#main").innerHTML='<div class="loading">Carregando…</div>';return}
   const ae=document.activeElement;if(ae&&$("#main").contains(ae)&&(ae.dataset.par!=null||ae.id==="q_texto"||ae.id==="busca"||ae.id==="atuQ"||ae.id==="aQ")&&render.skip){render.skip=false;return}
@@ -1722,6 +1732,7 @@ document.addEventListener("click",async e=>{
     case"sair":if(SBC.cli)await SBC.cli.auth.signOut();S.auth={tab:"entrar"};S.mode="login";render();break;
     case"trocarSenha":openTrocarSenha();break;
     case"mbAdd":membroAdd();break;
+    case"mbGerar":{const f=$("#mb_senha");if(f)f.value=senhaProvisoria();break}
     case"histLoad":histCarregar();break;
     case"backupBaixar":backupBaixar().catch(err=>toast(err.message));break;
     case"backupAplicar":backupAplicar();break;

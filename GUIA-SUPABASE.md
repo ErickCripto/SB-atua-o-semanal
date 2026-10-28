@@ -13,15 +13,12 @@ Tudo no plano gratuito. Leva uns 15 minutos, uma vez só.
 3. Na última parte, troque `seu.email@exemplo.com` pelo **seu e-mail** (você vira o administrador).
 4. Clique em **Run**. Deve aparecer "Success".
 
-## 3. E-mails com código
-1. **Authentication → Email Templates**.
-2. Em **Confirm signup**: assunto `Seu código de acesso – Mesa de Carteiras`; no corpo, cole o conteúdo de `supabase/emails/confirmar-cadastro.html`. Salve.
-3. Em **Reset Password**: assunto `Código para trocar a senha – Mesa de Carteiras`; no corpo, cole `supabase/emails/recuperar-senha.html`. Salve.
-4. **Authentication → Sign In / Providers → Email**: deixe **Confirm email** ligado.
+## 3. Quem cria os acessos é o administrador
+1. **Authentication → Sign In / Providers → Email**: **desligue "Confirm email"** e salve. (O acesso é criado por você dentro do site, então não precisa confirmar e-mail.)
+2. **Authentication → Hooks → Before User Created** → **Add hook** → tipo **Postgres** → schema `public` → função `hook_antes_de_criar_usuario` → salve. Com isso, o Supabase recusa qualquer cadastro de e-mail que não esteja na lista da equipe.
+3. **Authentication → Email Templates → Reset Password**: assunto `Código para trocar a senha – Mesa de Carteiras`; no corpo, cole o conteúdo de `supabase/emails/recuperar-senha.html` (ou do arquivo `recuperar-senha.html`). Salve.
 
-> **Importante para a equipe:** o envio de e-mail que vem pronto no Supabase só entrega para os e-mails de quem faz parte da organização do Supabase e manda poucos por hora. Para os colegas receberem os códigos, ligue um SMTP próprio em **Authentication → Emails → SMTP Settings**. O jeito mais simples e grátis é um Gmail com "senha de app":
-> - Host `smtp.gmail.com`, porta `465`, usuário = o Gmail, senha = a senha de app (Conta Google → Segurança → Verificação em duas etapas → Senhas de app).
-> - Remetente: o mesmo Gmail; nome: `Mesa de Carteiras`.
+> Para os colegas receberem o código de "Esqueci a senha", ligue um SMTP próprio em **Authentication → Emails → SMTP Settings** (o envio que vem pronto só entrega para quem é da sua organização no Supabase). Com Gmail: host `smtp.gmail.com`, porta `465`, usuário = o Gmail, senha = uma "senha de app" (Conta Google → Segurança → Verificação em duas etapas → Senhas de app).
 
 ## 4. Ligar o site ao banco
 1. **Project Settings → API**: copie o **Project URL** e a **publishable key** (começa com `sb_publishable_`; nos projetos antigos aparece como anon public).
@@ -36,17 +33,20 @@ Tudo no plano gratuito. Leva uns 15 minutos, uma vez só.
 
 A anon key pode ficar no site: ela é pública por natureza. Quem protege os dados são as regras do `setup.sql`: só e-mails liberados em **Ajustes → Equipe** veem ou alteram qualquer coisa.
 
-## 5. Primeiro acesso
-1. Abra o site → **Criar acesso** → seu nome, **o mesmo e-mail do passo 2**, senha (mínimo 8 caracteres).
-2. Chega um código no e-mail → digite → pronto, você está dentro.
-3. Para trazer o que já existe na versão do Claude: lá, em **Ajustes → Backup**, clique em **Baixar backup**; aqui, em **Ajustes → Backup**, use **Restaurar backup** com esse arquivo.
+## 5. Seu primeiro acesso (administrador)
+Como você é o primeiro, crie o seu usuário pelo painel do Supabase:
+1. **Authentication → Users → Add user → Create new user**: o mesmo e-mail que você pôs no SQL, uma senha, e marque **Auto Confirm User**.
+2. Abra o site e entre com esse e-mail e senha.
+3. Para trazer o que já existe na versão do Claude: lá, em **Ajustes → Backup**, **Baixar backup**; aqui, em **Ajustes → Backup**, **Restaurar backup**.
 
-## 6. Colocar a equipe
-1. **Ajustes → Equipe** → e-mail e nome da pessoa → **Liberar acesso**.
-2. A pessoa abre o site → **Criar acesso** com esse e-mail → digita o código que chegar.
+## 6. Criar o acesso dos colegas (só administrador)
+1. No site: **Ajustes → Equipe** (só aparece para administradores) → nome, e-mail, senha provisória (o site já sugere uma) → **Criar acesso**.
+2. Copie os dados que aparecem e mande para a pessoa por mensagem direta.
+3. Ela entra com o e-mail e a senha provisória, e o site pede para ela criar a senha dela.
+4. Para tirar o acesso de alguém: **Remover** na mesma lista. Os dados ficam bloqueados para ela na hora.
 
 ## Esqueci a senha
-Tela de acesso → **Esqueci a senha** → e-mail → chega um código → digite o código e a senha nova duas vezes → **Alterar senha**. Logado, também dá para trocar em **alterar senha**, no topo.
+Tela de entrada → **Esqueci a senha** → e-mail → chega um código → digite o código e a senha nova duas vezes → **Alterar senha**. Logado, também dá para trocar em **alterar senha**, no topo.
 
 ## O que fica guardado
 - Tudo da equipe fica no banco: posições de cada dia, bases título a título, anotações, chamados, pareceres, parâmetros.

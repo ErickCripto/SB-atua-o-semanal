@@ -90,3 +90,22 @@ exception when duplicate_object then null; end $$;
 insert into public.membros (email, nome, admin)
 values (lower('seu.email@exemplo.com'), 'Administrador', true)
 on conflict (email) do update set admin = true;
+
+-- =====================================================================
+-- Só o administrador cria acessos: o cadastro de qualquer e-mail que não
+-- esteja na lista da equipe é recusado pelo próprio Supabase.
+-- Depois de rodar, ligue em: Authentication › Hooks › Before User Created
+-- › Postgres › função hook_antes_de_criar_usuario.
+-- =====================================================================
+create or replace function public.hook_antes_de_criar_usuario(event jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists (select 1 from public.membros where lower(email) = lower(event -> 'user' ->> 'email')) then
+    return '{}'::jsonb;
+  end if;
+  return jsonb_build_object('error', jsonb_build_object(
+    'http_code', 403,
+    'message', 'Este e-mail não foi liberado pelo administrador.'));
+end $$;
+grant execute on function public.hook_antes_de_criar_usuario(jsonb) to supabase_auth_admin;
+revoke execute on function public.hook_antes_de_criar_usuario(jsonb) from authenticated, anon, public;
