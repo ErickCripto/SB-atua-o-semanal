@@ -222,7 +222,7 @@ table.grid{border-collapse:collapse;width:100%}
  <div class="strip">
   <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="visaoBox"></span><span id="basePos"></span><b id="saveMode" hidden>Conectando…</b><span id="userBox"></span></span></div>
   <nav class="tabs">
-   <button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="geral">Cedentes e sacados</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button>
+   <button class="tab eq" data-act="go" data-v="geral" data-g="pesq" data-h="pesquisar" hidden>Pesquisar cedente</button><button class="tab eq" data-act="go" data-v="geral" data-g="down" data-h="dashboard" hidden>Dashboard e planilha</button><button class="tab eq" data-act="go" data-v="geral" data-g="imp" data-h="base" hidden>Colocar a base</button><button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button>
   </nav>
  </div>
  <main id="main"><div class="loading">Carregando…</div></main>
@@ -1427,7 +1427,7 @@ function vEscolha(){
    <div class="esc-cards">
     <button class="esc-card${S.visao==="minha"?" atual":""}" data-act="visao" data-v="minha"${semNome?" disabled":""}><span class="esc-ico">${icoEu}</span><span class="esc-t">Minha carteira</span><span class="esc-d">Só os cedentes em que você é o responsável.</span>
      <span class="esc-n">${semNome?"Defina seu nome em Ajustes para usar esta opção":`<b>${meus.length}</b> cedente${sufixo(meus.length)}${meus.length?` · <b>${ab(meus)}</b> abaixo da meta`:""}`}</span><span class="esc-go">Entrar ›</span></button>
-    <button class="esc-card${S.visao==="equipe"?" atual":""}" data-act="visao" data-v="equipe"><span class="esc-ico">${icoEq}</span><span class="esc-t">Todos os cedentes</span><span class="esc-d">A carteira completa da equipe, com o responsável de cada cedente.</span>
+    <button class="esc-card${S.visao==="equipe"?" atual":""}" data-act="visao" data-v="equipe"><span class="esc-ico">${icoEq}</span><span class="esc-t">Todos os cedentes</span><span class="esc-d">Pesquise qualquer cedente da base, baixe o dashboard e a planilha, e coloque a base do dia.</span>
      <span class="esc-n"><b>${L.length}</b> cedente${sufixo(L.length)}${L.length?` · <b>${ab(L)}</b> abaixo da meta`:""}</span><span class="esc-go">Entrar ›</span></button>
    </div><p class="esc-rod">Dá para trocar quando quiser pelo <b>MENU</b>, na faixa verde à esquerda, ou em <b>Visão</b>, no topo.</p></div>`;
 }
@@ -1446,7 +1446,11 @@ function render(){
   const tCt=document.querySelector('.tab[data-v="controle"]');if(tCt)tCt.hidden=!(store.kind==="sb"&&ehAdmin());
   if(S.view==="controle"&&!(store.kind==="sb"&&ehAdmin())&&S.mode!=="loading"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}
   if(S.view==="ajustes"&&!ehAdmin()&&["sb"].includes(S.mode)){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}
-  $$(".tab").forEach(t=>{if(t.dataset.v===S.view)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
+  const todos=S.visao==="equipe";
+  if(S.mode==="sb"||S.mode==="db"||S.mode==="local"){if(todos&&!["geral","ajustes","controle"].includes(S.view)){S.view="geral";try{history.replaceState(null,"","#pesquisar")}catch(e){}}
+    if(!todos&&S.view==="geral"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}}
+  $$(".tab").forEach(t=>{const eq=t.classList.contains("eq");t.hidden=todos?!eq:eq;
+    const on=eq?(S.view==="geral"&&(S.gSub||"pesq")===t.dataset.g):t.dataset.v===S.view;if(on)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
   $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"?"Aguardando acesso":"Conectando…";
   const ub=$("#userBox");if(ub){const logado=!["login","semacesso","trocar","loading"].includes(S.mode)&&S.mode;
     const nome=S.mode==="sb"&&SBC.user?(SBC.eu&&SBC.eu.nome||SBC.user.email):S.mode==="db"&&S.user&&S.user.name?S.user.name:"Você";
@@ -1496,7 +1500,8 @@ function vGeral(){
     if(b===undefined)body=`<p class="hint carregando">Carregando a base de ${fd(date)}…</p>`;
     else if(!b||!(b.car||b.tra))body=`<div class="warn-box">A posição de ${fd(date)} não tem os títulos salvos. Importe a base (ou o QPROF) de novo na aba “Colocar a base”.</div>`;
     else body=t==="down"?gDownload(date,b):gPesquisa(date,b)}
-  return`<div class="ptitle">Cedentes e sacados <span class="muted">· ${date?"base de "+fd(date):"sem base"}</span><span class="right">${date?`<label class="small">Posição <select class="inp" id="g_dia">${regDatas().slice().reverse().map(d=>`<option value="${d}"${d===date?" selected":""}>${fd(d)}</option>`).join("")}</select></label>`:""}</span></div><div class="panel">${sub(tabs,t,"gSub")}<div class="pbody">${body}</div></div>`}
+  const tit={pesq:"Pesquisar cedente",down:"Dashboard e planilha",imp:"Colocar a base"}[t];
+  return`<div class="ptitle">${tit} <span class="muted">· ${date?"base de "+fd(date):"sem base"}</span><span class="right">${date?`<label class="small">Posição <select class="inp" id="g_dia">${regDatas().slice().reverse().map(d=>`<option value="${d}"${d===date?" selected":""}>${fd(d)}</option>`).join("")}</select></label>`:""}</span></div>${body}`}
 function gBusca(b,val){const ceds=geralCeds(b);return`<div class="fbar"><input class="inp" id="g_busca" list="g_cedl" value="${esc(val||"")}" placeholder="Digite o nome ou o código do cedente" style="min-width:380px;flex:1;max-width:560px" autocomplete="off"><datalist id="g_cedl">${ceds.map(([c,n])=>`<option value="${esc(c)} - ${esc(n)}"></option>`).join("")}</datalist><button class="btn pri" data-act="gBuscar">Pesquisar</button><span class="muted small">${ceds.length} cedentes nesta base</span></div>`}
 function gPesquisa(date,b){
   const base=b.car||b.tra;const cod=S.gCed&&base.rows.some(r=>String(r[1])===S.gCed)?S.gCed:"";
@@ -2331,7 +2336,7 @@ async function doImport(){
       S.raw={cart:Pp.car&&Pp.car.raw,tr:Pp.tra&&Pp.tra.raw};
       const prox=regDatas().find(x=>x>data);if(prox&&temBase){const bn=await loadBase(prox).catch(()=>null);if(bn){const ln=Core.calcular(bn.car,bn.tra,refObj(),{date:prox,prevCar:Pp.carB,prevTra:Pp.traB});await safe(store.set("reg",prox,{...S.regs[prox],linhas:JSON.parse(JSON.stringify(ln))}))}}
       if(D.chImp&&D.chImp.length){try{go.textContent="Salvando chamados…";const n=await chImportar(D.chImp,t=>go.textContent=t);toast(n+" chamados da aba CHAMADOS atualizados")}catch(e){toast("Base registrada, mas os chamados não foram salvos: "+(e.message||e))}}
-      S.dia=data;S.cmp=null;S.relDia=data;S.relCmp=null;closeDrawer();S.view="relatorios";S.relTab="mudou";location.hash="relatorios";render();
+      S.dia=data;S.cmp=null;S.relDia=data;S.relCmp=null;closeDrawer();if(S.visao==="equipe"){S.view="geral";S.gSub="pesq";location.hash="pesquisar"}else{S.view="relatorios";S.relTab="mudou";location.hash="relatorios"}render();
     }else{go.disabled=false;go.textContent="Registrar posição"}
   }catch(e){$("#i_err").textContent=e.message||"Erro ao registrar.";go.disabled=false;go.textContent="Registrar posição"}
 }
@@ -2382,7 +2387,7 @@ document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act,id=el.dataset.id;
   if(a!=="arm"&&S.armed){S.armed=null;$$(".btn.armed").forEach(b=>{b.classList.remove("armed");b.textContent=b.dataset.label||b.textContent})}
   switch(a){
-    case"go":location.hash=el.dataset.v;S.menuAberto=false;if(el.classList.contains("uit")&&document.activeElement)document.activeElement.blur();break;
+    case"go":if(el.dataset.g){S.gSub=el.dataset.g;if(S.view==="geral"){location.hash=el.dataset.h;render();break}location.hash=el.dataset.h;break}location.hash=el.dataset.v;S.menuAberto=false;if(el.classList.contains("uit")&&document.activeElement)document.activeElement.blur();break;
     case"verPessoa":setVisao("pessoa",el.dataset.v);S.view="carteiras";location.hash="carteiras";render();break;
     case"voltarControle":setVisao("equipe");S.view="controle";location.hash="controle";render();break;
     case"ctlP":S.ctlP=el.dataset.v;S.ctl=null;render();break;
@@ -2515,7 +2520,8 @@ document.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.clos
 document.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#i_drop");if(d)d.classList.remove("over")});
 document.addEventListener("drop",e=>{const d=e.target.closest&&e.target.closest("#i_drop");if(d){e.preventDefault();d.classList.remove("over");addImportFiles([...e.dataTransfer.files])}});
 const VIEWS=["controle","anotacoes","atuacao","carteiras","tranche","relatorios","chamados","parecer","qprof","ajustes","geral"];
-function fromHash(){const h=location.hash.slice(1);if(VIEWS.includes(h))S.view=h}
+const GHASH={pesquisar:"pesq",dashboard:"down",base:"imp"};
+function fromHash(){const h=location.hash.slice(1);if(GHASH[h]){S.view="geral";S.gSub=GHASH[h]}else if(VIEWS.includes(h))S.view=h}
 window.addEventListener("hashchange",()=>{fromHash();render()});
 fromHash();render();store.init();
 })();
