@@ -170,6 +170,7 @@ table.grid{border-collapse:collapse;width:100%}
 .pre{white-space:pre-wrap;font-family:Consolas,"Courier New",monospace;font-size:12px;background:#F7F9F8;border:1px solid var(--line-l);padding:8px;margin:0;max-height:320px;overflow:auto;overflow-wrap:anywhere}
 .pre-w{white-space:pre-wrap;overflow-wrap:anywhere}
 .warn-box{background:var(--warn-bg);border:1px solid #EBCB7A;border-radius:4px;padding:6px 9px;margin:4px 0}
+.info-box{background:#E8F1FB;border:1px solid #ABC6E8;border-radius:4px;padding:6px 9px;margin:4px 0}
 .warn-box.bloq{background:var(--bad-bg);border-color:#F0B0A9}.warn-box.bloq ul{margin:4px 0 0 18px;padding:0}.warn-box.bloq li{margin:3px 0}
 .ok-box{background:var(--ok-bg);border:1px solid #A7D9B6;border-radius:4px;padding:6px 9px;margin:4px 0;color:#14502A}
 .banner.pessoa{background:#E3F1EC;border-color:#9FD0BE}
@@ -762,7 +763,8 @@ const nrmN=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").repl
 function assDe(cod){for(const d of regDatas().slice().reverse()){const l=(S.regs[d].linhas||[]).find(x=>x.cod===String(cod));if(l&&l.assistente)return l.assistente}const lm=S.lim[cod];return lm&&lm.assistente||""}
 const respDe=cod=>(S.resp&&S.resp[cod])||assDe(cod);
 const meuNome=()=>store.kind==="sb"?((SBC.eu&&SBC.eu.nome)||""):(S.cfg.meuNome||"");
-const isMeu=cod=>{const m=nrmN(meuNome());return!!m&&nrmN(respDe(cod))===m};
+const mesmoNome=(a,b)=>{a=nrmN(a);b=nrmN(b);if(!a||!b)return false;if(a===b)return true;const ta=a.split(" "),tb=b.split(" ");if(ta.length<2&&tb.length<2)return false;const sa=new Set(ta),sb=new Set(tb);return ta.every(t=>sb.has(t))||tb.every(t=>sa.has(t))};
+const isMeu=cod=>{const m=meuNome();return!!nrmN(m)&&mesmoNome(respDe(cod),m)};
 const vis=cod=>S.visao==="pessoa"?nrmN(respDe(cod))===nrmN(S.visaoPessoa):(S.visao!=="minha"||isMeu(cod));
 function setVisao(v,pessoa){S.visao=v;S.visaoPessoa=pessoa||"";S.escolher=false;try{if(v!=="pessoa")localStorage.setItem("mesa_visao",v);sessionStorage.setItem("mesa_escolheu","1")}catch(e){}S.menuAberto=false;render();window.scrollTo(0,0)}
 function nomesEquipe(){const s=new Map();const add=n=>{if(n&&!s.has(nrmN(n)))s.set(nrmN(n),n)};if(store.kind==="sb")(SBC.membros||[]).forEach(m=>add(m.nome));linhasDe(ultimo()).forEach(l=>add(respDe(l.cod)));Object.values(S.lim||{}).forEach(x=>add(x.assistente));add(meuNome());return[...s.values()].sort((a,b)=>a.localeCompare(b,"pt-BR"))}
@@ -1052,6 +1054,7 @@ async function liberarAcesso(email,btn){if(btn){btn.disabled=true;btn.textConten
   if(error){const m=String(error.message||error);toast(/admin_liberar_acesso|function/i.test(m)&&/not|find|exist/i.test(m)?"Falta rodar no Supabase o código do bloqueio (bloqueio-de-senha.sql).":m);if(btn){btn.disabled=false;btn.textContent="Liberar acesso"}return}
   const m=(SBC.membros||[]).find(x=>x.email===email);toast("Acesso de "+(m&&m.nome?nomeB(m.nome):email)+" liberado. Ela já pode entrar com a senha de antes.");membrosRecarregar()}
 async function membroDel(email){const{error}=await SBC.cli.from("membros").delete().eq("email",email);if(error){toast("Não foi possível remover ("+error.message+").");return}toast("Acesso removido");membrosRecarregar()}
+async function membroNome(email,nome){if(!nome){toast("O nome não pode ficar vazio.");membrosRecarregar();return}const{error}=await SBC.cli.from("membros").update({nome}).eq("email",email);if(error){toast(error.message);return}toast("Nome salvo");await membrosRecarregar();if(SBC.user&&email.toLowerCase()===SBC.user.email.toLowerCase())SBC.eu={...SBC.eu,nome}}
 async function membroAdmin(email,on){const{error}=await SBC.cli.from("membros").update({admin:on}).eq("email",email);if(error){toast(error.message);return}membrosRecarregar()}
 async function histCarregar(){const{data,error}=await SBC.cli.from("historico").select("*").order("alterado_em",{ascending:false}).limit(150);if(error){toast(error.message);return}SBC.hist=data||[];render()}
 function histRotulo(h){const d=h.data||{};if(h.col==="anot")return"Anotação · "+nomeB(nomeCed(h.id)||h.id);if(h.col==="chamados")return"Chamado "+(d.numero||"");if(h.col==="parecer")return"Parecer da semana de "+fd(h.id);if(h.col==="reg")return"Posição de "+fd(h.id);if(h.col==="cfg")return"Parâmetros ("+h.id+")";if(h.col==="feito")return"Marcações de feito";if(h.col==="caract")return"Característica · "+h.id;if(h.col==="qprof")return"Pendência salva · "+nomeB(d.cedente||"");return h.col+" · "+h.id}
@@ -1088,7 +1091,7 @@ async function backupAplicar(){
 function vEquipeHist(){
   if(store.kind!=="sb")return"";const adm=SBC.eu&&SBC.eu.admin;const H=SBC.hist;
   return`${adm?`<fieldset class="box"><legend>Equipe · criar e gerenciar acessos (${SBC.membros.length})</legend><div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>E-mail</th><th>Nome</th><th>Administrador</th><th>Situação</th><th>Liberado em</th><th></th></tr></thead><tbody>
-    ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td>${situacaoAcesso(m,adm&&!eu)}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td class="nw">${adm&&!eu?`<button class="btn sm" data-act="rdAbrir" data-v="${esc(m.email)}">Redefinir senha</button> `+delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
+    ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${adm?`<input class="inp sm" data-mbnome="${esc(m.email)}" value="${esc(m.nome||"")}" title="Nome igual ao da coluna Assistente da base" style="min-width:150px">`:esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td>${situacaoAcesso(m,adm&&!eu)}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td class="nw">${adm&&!eu?`<button class="btn sm" data-act="rdAbrir" data-v="${esc(m.email)}">Redefinir senha</button> `+delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
     <div class="fgrid" style="margin-top:8px"><label class="fl">Nome<input class="inp" id="mb_nome"></label><label class="fl">E-mail<input class="inp" id="mb_email" type="email"></label>
      <label class="fl">Senha provisória<span class="fbar" style="margin:0"><input class="inp mono" id="mb_senha" value="${esc(senhaProvisoria())}" style="max-width:150px"><button class="btn sm" data-act="mbGerar" type="button">gerar outra</button></span></label>
      <label class="ck"><input type="checkbox" id="mb_admin"> administrador</label><button class="btn pri" data-act="mbAdd">Criar acesso</button></div>
@@ -1146,7 +1149,7 @@ function render(){
   const u=ultimo();$("#basePos").textContent=u?"Base de "+fd(u)+(S.cfg.regional?" · Regional "+S.cfg.regional:""):"Nenhuma base";
   if(S.mode==="loading"){$("#main").innerHTML='<div class="loading">Carregando…</div>';return}
   const ae=document.activeElement;if(ae&&$("#main").contains(ae)&&(ae.dataset.par!=null||ae.id==="q_texto"||ae.id==="busca"||ae.id==="atuQ"||ae.id==="aQ")&&render.skip){render.skip=false;return}
-  const avisoVisao=S.visao==="pessoa"?`<div class="banner pessoa">Você está vendo a <b>carteira de ${esc(nomeB(S.visaoPessoa))}</b>, como ela vê ao entrar em “Minha carteira”. <button class="lk strong" data-act="voltarControle">Voltar ao Controle</button> · <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:S.visao==="minha"?(!meuNome()?`<div class="banner">Visão “Minhas carteiras”: ${store.kind==="sb"?"o seu nome na equipe está vazio. Peça para o administrador preencher em Ajustes › Equipe":"defina o seu nome na base em Ajustes"} para o site saber quais cedentes são seus. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:(!linhasDe(ultimo()).some(l=>isMeu(l.cod))&&ultimo()?`<div class="banner">Nenhum cedente com o responsável “${esc(meuNome())}” na base. O responsável vem da coluna Assistente da base; dá para trocar na ficha do cedente. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:"")):"";
+  const avisoVisao=S.visao==="pessoa"?`<div class="banner pessoa">Você está vendo a <b>carteira de ${esc(nomeB(S.visaoPessoa))}</b>, como ela vê ao entrar em “Minha carteira”. <button class="lk strong" data-act="voltarControle">Voltar ao Controle</button> · <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:S.visao==="minha"?(!meuNome()?`<div class="banner">Visão “Minhas carteiras”: ${store.kind==="sb"?"o seu nome na equipe está vazio. Peça para o administrador preencher em Ajustes › Equipe":"defina o seu nome na base em Ajustes"} para o site saber quais cedentes são seus. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:(!linhasDe(ultimo()).some(l=>isMeu(l.cod))&&ultimo()?`<div class="banner">Nenhum cedente com o responsável “${esc(meuNome())}” na base de ${fd(ultimo())}. ${(()=>{const n=[...new Set(linhasDe(ultimo()).map(l=>respDe(l.cod)).filter(Boolean))];return n.length?`Nomes na coluna Assistente: <b>${n.slice(0,8).map(x=>esc(x)).join(", ")}</b>${n.length>8?"…":""}. `:"A base não tem a coluna Assistente. "})()}${store.kind==="sb"?(ehAdmin()?"Ajuste o nome da pessoa em Ajustes › Equipe para ficar igual ao da base.":"Peça ao administrador para ajustar o seu nome em Ajustes › Equipe igual ao da base."):""} Se você importou a sua planilha e ela não entrou, importe de novo: agora cada planilha é juntada à base da equipe. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:"")):"";
   const banner=avisoVisao+(S.mode==="local"?'<div class="banner">Abra pelo Claude (logado) para salvar na sua conta. Agora os dados ficam só neste navegador.</div>':"");
   const v={controle:vControle,anotacoes:vAnotacoes,atuacao:vAtuacao,carteiras:vCarteiras,tranche:vTranche,relatorios:vRelatorios,chamados:vChamados,parecer:vParecer,qprof:vQprof,ajustes:vAjustes}[S.view]||vAtuacao;
   const keep=ae&&ae.id&&$("#main").contains(ae)?{id:ae.id,pos:ae.selectionStart}:null;
@@ -1860,6 +1863,16 @@ async function addImportFiles(files){
   }catch(e){$("#i_err").textContent=e.message}
   drawImport();
 }
+/* junta a base nova com a anterior: os cedentes do arquivo novo (e os demais da mesma pessoa/assistente) são trocados; os outros ficam */
+function juntarBase(velha,neu){
+  const codsN=new Set(neu.rows.map(r=>r[1])),pessN=new Set(Object.values(neu.ass||{}).map(nrmN).filter(Boolean));
+  const fica=cod=>!codsN.has(cod)&&!(velha.ass&&velha.ass[cod]&&pessN.has(nrmN(velha.ass[cod])));
+  const b={rows:neu.rows.slice(),mot:neu.mot.slice(),sac:neu.sac.slice(),rot:neu.rot.slice(),dst:(neu.dst||[]).slice(),org:{...(neu.org||{})},ced:{...(neu.ced||{})},ass:{...(neu.ass||{})},regional:neu.regional||velha.regional||""};
+  const mp=k=>{const m=new Map();b[k].forEach((x,i)=>m.set(x,i));return v=>{if(v==null)return v;const x=(velha[k]||[])[v];if(x===undefined)return v;let i=m.get(x);if(i===undefined){i=b[k].length;b[k].push(x);m.set(x,i)}return i}};
+  const fM=mp("mot"),fS=mp("sac"),fR=mp("rot"),fD=mp("dst");const mant=new Set();
+  for(const r of velha.rows){if(!fica(r[1]))continue;const n=r.slice();n[3]=fM(r[3]);n[4]=fS(r[4]);n[8]=fR(r[8]);n[15]=fD(r[15]);b.rows.push(n);mant.add(r[1])}
+  mant.forEach(c=>{["org","ced","ass"].forEach(k=>{if(velha[k]&&velha[k][c]!=null&&b[k][c]==null)b[k][c]=velha[k][c]})});
+  return{b,mant:mant.size,nov:codsN.size,pess:[...new Set(Object.values(neu.ass||{}))].map(nomeB)}}
 async function drawImport(){
   $("#i_list").innerHTML=D.files.length?`<table class="grid"><thead><tr><th>Arquivo</th><th>Títulos</th><th>É a base da</th><th></th></tr></thead><tbody>${D.files.map((f,i)=>`<tr><td class="small wrap">${esc(f.nome)}</td><td class="r num">${f.b.rows.length}</td><td><select class="inp" data-ftipo="${i}"><option value="car"${f.tipo==="car"?" selected":""}>Carteira</option><option value="tra"${f.tipo==="tra"?" selected":""}>Tranche</option></select></td><td><button class="lk" data-act="rmFile" data-i="${i}">remover</button></td></tr>`).join("")}</tbody></table>`:"";
   const car=D.files.find(f=>f.tipo==="car"),tra=D.files.find(f=>f.tipo==="tra");
@@ -1868,14 +1881,17 @@ async function drawImport(){
   $("#i_prev").innerHTML='<p class="hint">Calculando…</p>';
   let bp=null;if(pv){bp=await loadBase(pv).catch(()=>null)}
   const old=ex?await loadBase(data).catch(()=>null):null;
-  const carB=car?car.b:(old&&old.car)||null,traB=tra?tra.b:(old&&old.tra)||(!ex&&bp&&bp.tra&&D.keepTr!==false?bp.tra:null);
+  const junta=D.substituir!==true,baseJ=old||bp;let infoJ=null;
+  const jn=(neu,velha)=>{if(!neu||!junta||!velha)return neu;const r=juntarBase(velha,neu);infoJ=infoJ||{mant:0,nov:0,de:old?data:pv,pess:new Set()};infoJ.mant+=r.mant;infoJ.nov+=r.nov;r.pess.forEach(x=>infoJ.pess.add(x));return r.b};
+  const carB=car?jn(car.b,baseJ&&baseJ.car):(old&&old.car)||null,traB=tra?jn(tra.b,baseJ&&baseJ.tra):(old&&old.tra)||(!ex&&bp&&bp.tra&&D.keepTr!==false?bp.tra:null);
   let linhas;try{linhas=Core.calcular(carB,traB,refObj(),{date:data,prevCar:bp&&bp.car,prevTra:bp&&bp.tra})}catch(e){$("#i_err").textContent=e.message;$("#i_go").disabled=true;return}
   D.parsed={linhas,carB,traB,car,tra,pv,data};
   const cd=linhas.filter(l=>l.naCarteira&&l.ind!=null);const media=cd.length?cd.reduce((a,l)=>a+l.ind,0)/cd.length:null;
   const movOk=linhas.some(l=>l.mov);
   $("#i_prev").innerHTML=`<fieldset class="box in"><legend>Prévia</legend><div class="kps sm"><div class="kp"><small>Cedentes na carteira</small><b>${linhas.filter(l=>l.naCarteira).length}</b></div><div class="kp"><small>Índice médio</small><b>${pc(media)}</b></div><div class="kp"><small>Abaixo da meta</small><b>${cd.filter(l=>l.status==="Abaixo").length}</b></div><div class="kp"><small>Com tranche</small><b>${linhas.filter(l=>l.tr).length}</b></div></div>
    <p class="small">${pv?(movOk?`Vai comparar título a título com a base de ${fd(pv)}.`:`A base de ${fd(pv)} não tem os títulos salvos; a comparação título a título começa a partir desta.`):"Primeira base: a comparação título a título começa na próxima importação."}</p>
-   ${ex?`<p class="warn-box">Já existe uma posição em ${fd(data)}. Registrar vai substituí-la.</p>`:""}
+   ${baseJ&&(car||tra)?`<div class="${junta?"info-box":"warn-box"}">${junta?(infoJ&&infoJ.mant?`<b>Juntando com a base de ${fd(infoJ.de)}.</b> Os cedentes deste arquivo${infoJ.pess.size?` (de ${[...infoJ.pess].map(esc).join(", ")})`:""} entram no lugar dos anteriores; ${infoJ.mant} cedente${infoJ.mant>1?"s":""} de outras pessoas continua${infoJ.mant>1?"m":""} como estava${infoJ.mant>1?"m":""}.`:`Este arquivo tem todos os cedentes da base de ${fd(infoJ?infoJ.de:(old?data:pv))}; ela será atualizada.`):`<b>Substituir tudo:</b> a posição de ${fd(data)} fica só com os cedentes deste arquivo; os de outras pessoas saem desta data.`}
+     <label class="ck small" style="display:block;margin-top:4px"><input type="checkbox" id="i_subst"${junta?"":" checked"}> Este arquivo é a base completa da equipe (substituir tudo em vez de juntar)</label></div>`:""}
    ${!tra&&!ex&&bp&&bp.tra?`<label class="ck small"><input type="checkbox" id="i_keepTr"${D.keepTr!==false?" checked":""}> Sem base da tranche: repetir a tranche de ${fd(pv)}</label>`:""}
    ${!Object.keys(S.risco).length?`<p class="warn-box">A tabela de Risco Pricing está vazia, então todos usam a meta padrão. ${ehAdmin()?"Marque abaixo ou atualize em Ajustes.":"Peça para um administrador atualizar as tabelas de referência."}</p>`:""}
    ${D.wbRef&&ehAdmin()?`<label class="ck small"><input type="checkbox" id="i_ref"> Atualizar também as tabelas de referência deste arquivo (risco, grupos, limites, característica, metas)</label>`:""}</fieldset>`;
@@ -2062,6 +2078,8 @@ document.addEventListener("change",async e=>{
   if(t.id==="i_file"){await addImportFiles([...t.files]);t.value=""}
   if(t.id==="i_data")drawImport();
   if(t.id==="i_keepTr"){D.keepTr=t.checked;drawImport()}
+  if(t.id==="i_subst"){D.substituir=t.checked;drawImport()}
+  if(t.dataset.mbnome){membroNome(t.dataset.mbnome,t.value.trim());return}
   if(t.dataset.ftipo!=null){D.files[+t.dataset.ftipo].tipo=t.value;drawImport()}
   if(t.id==="refFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);const ks=Object.keys(pl.sheets);await importarReferencias(n=>{const k=ks.find(s=>s.toUpperCase()===n);return k?pl.sheets[k]:null})}catch(err){toast(err.message)}t.value=""}
   if(t.id==="q_file"&&t.files[0]){try{const wb=await lerArquivo(t.files[0],true);let b=null;for(const n of wb.SheetNames){const aoa=window.XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null,blankrows:false});
