@@ -170,6 +170,16 @@ table.grid{border-collapse:collapse;width:100%}
 .pre{white-space:pre-wrap;font-family:Consolas,"Courier New",monospace;font-size:12px;background:#F7F9F8;border:1px solid var(--line-l);padding:8px;margin:0;max-height:320px;overflow:auto;overflow-wrap:anywhere}
 .pre-w{white-space:pre-wrap;overflow-wrap:anywhere}
 .gwrap{border:1px solid var(--line,#C9D1CE);border-radius:4px;overflow:hidden;background:#f6f5f2}.gframe{display:block;width:100%;height:calc(100vh - 230px);min-height:560px;border:0}
+.umenu{position:relative;display:inline-block;outline:none}
+.uchip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border:1px solid #9FD0BE;border-radius:18px;background:#fff;cursor:pointer}
+.uav{width:24px;height:24px;border-radius:50%;background:var(--tab1,#1F7A62);color:#fff;font-weight:bold;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+.unm{font-weight:bold;color:#20332D}.ucar{color:#5B6B66;font-size:10px}
+.udrop{display:none;position:absolute;right:0;top:100%;margin-top:4px;min-width:230px;background:#fff;border:1px solid #C9D1CE;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:40;padding:4px 0}
+.umenu:hover .udrop,.umenu:focus-within .udrop{display:block}
+.umenu::after{content:"";position:absolute;left:0;right:0;top:100%;height:6px}
+.uhd{display:flex;flex-direction:column;gap:1px;padding:6px 12px 8px;border-bottom:1px solid #E3E8E6;font-size:12px;color:#5B6B66}.uhd b{color:#20332D;font-size:13px}
+.uit{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 12px;cursor:pointer;font:inherit;color:#20332D}.uit:hover,.uit.on{background:#E3F1EC}
+.kp b.ok{color:var(--ok)}.kp b.warn{color:var(--warn)}.kp b.bad{color:var(--bad)}td.bad{color:var(--bad);font-weight:bold}
 .warn-box{background:var(--warn-bg);border:1px solid #EBCB7A;border-radius:4px;padding:6px 9px;margin:4px 0}
 .info-box{background:#E8F1FB;border:1px solid #ABC6E8;border-radius:4px;padding:6px 9px;margin:4px 0}
 .warn-box.bloq{background:var(--bad-bg);border-color:#F0B0A9}.warn-box.bloq ul{margin:4px 0 0 18px;padding:0}.warn-box.bloq li{margin:3px 0}
@@ -210,9 +220,9 @@ table.grid{border-collapse:collapse;width:100%}
 <div id="menuPop" class="menupop" hidden></div>
 <div class="shell">
  <div class="strip">
-  <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="visaoBox"></span><span id="userBox"></span><span id="basePos"></span><span>Situação: <b id="saveMode">Conectando…</b></span></span></div>
+  <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="visaoBox"></span><span id="basePos"></span><b id="saveMode" hidden>Conectando…</b><span id="userBox"></span></span></div>
   <nav class="tabs">
-   <button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="geral">Cedentes e sacados</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button><button class="tab" data-act="go" data-v="ajustes">Ajustes</button><button class="tab" data-act="go" data-v="controle" hidden>Controle</button>
+   <button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="geral">Cedentes e sacados</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button>
   </nav>
  </div>
  <main id="main"><div class="loading">Carregando…</div></main>
@@ -1152,7 +1162,7 @@ function XLSXlib(){if(window.XLSX)return Promise.resolve(window.XLSX);if(xlsxP)r
   xlsxP=new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js";s.onload=()=>res(window.XLSX);s.onerror=()=>{xlsxP=null;rej(new Error("Não consegui carregar o leitor de Excel. Verifique a internet e tente de novo."))};document.head.appendChild(s)});return xlsxP}
 /* leitura da planilha em segundo plano (Web Worker), só com as abas necessárias */
 const XLSX_URL="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js";
-const ABAS_QUERO=["BASE CARTEIRAS","BASE - TRANCHE","DATA DA BASE","RISCO PRINCING","LIMITE - TRANCHE","CARACTERISTICA","METAS ESPECIAIS","METAS TRANCHE"];
+const ABAS_QUERO=["CHAMADOS","BASE CARTEIRAS","BASE - TRANCHE","DATA DA BASE","RISCO PRINCING","LIMITE - TRANCHE","CARACTERISTICA","METAS ESPECIAIS","METAS TRANCHE"];
 function lerPlanilhaCorpo(X,buf,want){
   const tp=typeof buf==="string"?"string":"array";const meta=X.read(buf,{type:tp,bookSheets:true,raw:tp==="string"});const names=meta.SheetNames,up=names.map(n=>n.toUpperCase());
   let pick=names.filter((n,i)=>want.includes(up[i]));if(!pick.some(n=>/^BASE /i.test(n)))pick=names.slice(0,3);
@@ -1438,7 +1448,14 @@ function render(){
   if(S.view==="ajustes"&&!ehAdmin()&&["sb"].includes(S.mode)){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}
   $$(".tab").forEach(t=>{if(t.dataset.v===S.view)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
   $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"?"Aguardando acesso":"Conectando…";
-  const ub=$("#userBox");if(ub)ub.innerHTML=S.mode==="sb"&&SBC.user?`${esc(SBC.eu&&SBC.eu.nome||SBC.user.email)} · <button class="lk" data-act="trocarSenha">alterar senha</button> · <button class="lk" data-act="sair">sair</button>`:"";
+  const ub=$("#userBox");if(ub){const logado=!["login","semacesso","trocar","loading"].includes(S.mode)&&S.mode;
+    const nome=S.mode==="sb"&&SBC.user?(SBC.eu&&SBC.eu.nome||SBC.user.email):S.mode==="db"&&S.user&&S.user.name?S.user.name:"Você";
+    const ini=String(nome).trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"?";
+    const adm=ehAdmin(),eq=store.kind==="sb"&&adm;const st=$("#saveMode")?$("#saveMode").textContent:"";
+    ub.innerHTML=logado?`<span class="umenu" tabindex="0"><span class="uchip"><span class="uav">${esc(ini)}</span><span class="unm">${esc(nomeB(nome))}</span><span class="ucar">▾</span></span>
+      <span class="udrop"><span class="uhd"><b>${esc(nomeB(nome))}</b>${S.mode==="sb"&&SBC.user?`<span>${esc(SBC.user.email)}</span>`:""}<span>${adm?"Administrador":"Equipe"} · ${esc(st)}</span></span>
+      ${adm?`<button class="uit${S.view==="ajustes"?" on":""}" data-act="go" data-v="ajustes">⚙ Ajustes</button>`:""}${eq?`<button class="uit${S.view==="controle"?" on":""}" data-act="go" data-v="controle">▤ Controle da equipe</button>`:""}
+      ${S.mode==="sb"?`<button class="uit" data-act="trocarSenha">Alterar senha</button><button class="uit" data-act="sair">Sair</button>`:""}</span></span>`:"";}
   const mm=$("#menuModo");if(mm)mm.textContent=S.visao==="pessoa"?"PESSOA":S.visao==="minha"?"MINHAS":"EQUIPE";
   const vb=$("#visaoBox");if(vb)vb.innerHTML=!["db","sb","local"].includes(S.mode)?"":`Visão: <button class="lk strong" data-act="menu">${S.visao==="pessoa"?"Carteira de "+esc(nomeB(S.visaoPessoa)):S.visao==="minha"?"Minhas carteiras":"Equipe toda"}</button>`;
   const mp=$("#menuPop");if(mp){mp.hidden=!S.menuAberto;if(S.menuAberto)mp.innerHTML=vMenu()}
@@ -1471,21 +1488,56 @@ function geralDados(date,b){const k=geralKey(date);if(S.geralCache&&S.geralCache
   const t0=performance.now();const Dd=Geral.montarD(b.car||b.tra,geralCtx(date));S.geralCache={key:k,D:Dd,html:null,ms:performance.now()-t0};return S.geralCache}
 function geralCeds(b){const cs=new Map();const base=b.car||b.tra;for(const r of base.rows){const c=String(r[1]);if(!cs.has(c)&&vis(c))cs.set(c,(base.ced||{})[c]||nomeCed(c))}return[...cs.entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"))}
 function vGeral(){
-  const date=geralData();if(!date)return vazio("Cedentes e sacados");
-  const b=needBase(date);if(b===undefined)return`<div class="ptitle">Cedentes e sacados</div><p class="hint carregando">Carregando a base de ${fd(date)}…</p>`;
-  if(!b||!(b.car||b.tra))return`<div class="ptitle">Cedentes e sacados</div><div class="warn-box">A posição de ${fd(date)} não tem os títulos salvos. Importe a base (ou o QPROF) de novo para montar o dash.</div>`;
-  const G=geralDados(date,b);const ok=document.querySelector("#main iframe.gframe");
-  if(ok&&ok.dataset.key===G.key&&$("#g_dia")&&$("#g_dia").value===date)S.geralKeyOk=true;
-  const base=b.car||b.tra;const velha=base.rows.length&&base.rows[0].length<18;
-  const ceds=geralCeds(b);
-  return`<div class="ptitle">Cedentes e sacados <span class="muted">· ${G.D.meta.cedentes} cedentes · ${G.D.sac.length.toLocaleString("pt-BR")} sacados · ${G.D.meta.titulos.toLocaleString("pt-BR")} títulos</span>
-   <span class="right"><label class="small">Posição <select class="inp" id="g_dia">${regDatas().slice().reverse().map(d=>`<option value="${d}"${d===date?" selected":""}>${fd(d)}</option>`).join("")}</select></label> <button class="btn pri" data-act="gDash">Baixar dash (HTML)</button></span></div>
-   ${velha?`<div class="warn-box">Esta posição foi importada antes da atualização: filial, código do sacado, vencimento e telefone não estão nela. Importe a base ou o QPROF de novo para ver tudo.</div>`:""}
-   <fieldset class="box"><legend>Síntese do risco (planilha no modelo)</legend><div class="fbar"><input class="inp" id="g_ced" list="g_cedl" placeholder="Digite o nome ou o código do cedente" style="min-width:340px"><datalist id="g_cedl">${ceds.map(([c,n])=>`<option value="${esc(c)} - ${esc(n)}"></option>`).join("")}</datalist>
-    <button class="btn pri" data-act="gSint">Baixar síntese (Excel)</button></div><p class="hint">Sai igual ao modelo: aba SINTESE DO RISCO com a tabela dinâmica e o filtro de Cedente no topo (B4), para trocar de cedente direto no Excel. Os ${ceds.length} cedentes desta visão vão no arquivo; o cedente digitado aqui já abre selecionado. A base não vai junto, só a tabela.</p></fieldset>
-   <div class="gwrap"><iframe class="gframe" data-key="${esc(G.key)}" title="Dash de confirmação da carteira"></iframe></div>`}
+  const tabs=[["pesq","Pesquisar cedente"],["down","Dashboard e planilha"],["imp","Colocar a base"]];const t=S.gSub||"pesq";
+  const date=geralData();let body;
+  if(t==="imp")body=gImportar(date);
+  else if(!date)body=`<div class="empty"><p>Nenhuma base registrada ainda. Use a aba “Colocar a base” para importar a planilha ou o QPROF.</p></div>`;
+  else{const b=needBase(date);
+    if(b===undefined)body=`<p class="hint carregando">Carregando a base de ${fd(date)}…</p>`;
+    else if(!b||!(b.car||b.tra))body=`<div class="warn-box">A posição de ${fd(date)} não tem os títulos salvos. Importe a base (ou o QPROF) de novo na aba “Colocar a base”.</div>`;
+    else body=t==="down"?gDownload(date,b):gPesquisa(date,b)}
+  return`<div class="ptitle">Cedentes e sacados <span class="muted">· ${date?"base de "+fd(date):"sem base"}</span><span class="right">${date?`<label class="small">Posição <select class="inp" id="g_dia">${regDatas().slice().reverse().map(d=>`<option value="${d}"${d===date?" selected":""}>${fd(d)}</option>`).join("")}</select></label>`:""}</span></div><div class="panel">${sub(tabs,t,"gSub")}<div class="pbody">${body}</div></div>`}
+function gBusca(b,val){const ceds=geralCeds(b);return`<div class="fbar"><input class="inp" id="g_busca" list="g_cedl" value="${esc(val||"")}" placeholder="Digite o nome ou o código do cedente" style="min-width:380px;flex:1;max-width:560px" autocomplete="off"><datalist id="g_cedl">${ceds.map(([c,n])=>`<option value="${esc(c)} - ${esc(n)}"></option>`).join("")}</datalist><button class="btn pri" data-act="gBuscar">Pesquisar</button><span class="muted small">${ceds.length} cedentes nesta base</span></div>`}
+function gPesquisa(date,b){
+  const base=b.car||b.tra;const cod=S.gCed&&base.rows.some(r=>String(r[1])===S.gCed)?S.gCed:"";
+  const nm=cod?((base.ced||{})[cod]||nomeCed(cod)):"";
+  const busca=`<fieldset class="box"><legend>Pesquisar cedente</legend>${gBusca(b,cod?cod+" - "+nm:"")}</fieldset>`;
+  if(!cod)return busca+`<p class="hint">Escolha um cedente para ver como ele está: risco, confirmação, C99, nada consta, rótulos, motivos e sacados.</p>`;
+  const ctx=geralCtx(date);const Sd=Geral.sinteseDados(cod,base,ctx);const rf=Sd.rf;
+  const T=Geral.titulos(base,{...ctx,vis:c=>c===cod});const g=grpOf(cod);const lim=S.lim[cod]||{};
+  const M=new Map();for(const t of T){const k=t.sacc||t.sac;let a=M.get(k);if(!a){a={sacc:t.sacc,sac:t.sac,cid:t.cid,uf:t.uf,n:0,v:0,cv:0,pv:0,prv:0,mot:new Map()};M.set(k,a)}a.n++;a.v+=t.v;if(t.c===0)a.cv+=t.v;if(t.c===2)a.pv+=t.v;if(t.c===3)a.prv+=t.v;a.mot.set(t.mot,(a.mot.get(t.mot)||0)+1)}
+  const sacs=[...M.values()].sort((x,y)=>y.v-x.v);const lim2=S.gSacAll?sacs.length:25;
+  const cls=x=>x>=.5?"ok":x>=.3?"warn":"bad";
+  const linhas=[];for(const r of Sd.rot){linhas.push(`<tr class="sub"><td><b>${esc(r.rot)}</b></td><td class="r num"><b>${money(r.v)}</b></td><td class="r num"><b>${pc(Sd.tot?r.v/Sd.tot:0)}</b></td><td></td></tr>`);
+    for(const[m,v]of r.mot){const c=Geral.classe(m)[0];linhas.push(`<tr><td style="padding-left:22px">${esc(m)}</td><td class="r num">${money(v)}</td><td class="r num">${pc(Sd.tot?v/Sd.tot:0)}</td><td><span class="st ${["ok","info","warn","bad"][c]}">${Geral.CL[c]}</span></td></tr>`)}}
+  return busca+`<fieldset class="box"><legend>${esc(nomeB(nm))} <span class="muted">· ${esc(cod)}${g&&(g[1]||g[0])?" · grupo "+esc(g[1]||g[0]):""}${lim.assistente?" · "+esc(nomeB(lim.assistente)):""}</span></legend>
+   <div class="fbar" style="margin-bottom:8px"><button class="btn pri" data-act="gSintCed" data-id="${esc(cod)}">Baixar síntese do risco (Excel)</button><button class="btn" data-act="ced" data-id="${esc(cod)}">Abrir ficha do cedente</button></div>
+   <div class="kps"><div class="kp"><small>Valor em aberto</small><b>${money(Sd.tot)}</b><span>${fN(Sd.n)} títulos</span></div>
+    <div class="kp"><small>Confirmação da carteira</small><b class="${cls(Sd.conf)}">${pc(Sd.conf)}</b></div>
+    <div class="kp"><small>C99</small><b${Sd.c99>0?' class="bad"':""}>${pc(Sd.c99,2)}</b></div>
+    <div class="kp"><small>Nada consta</small><b>${pc(Sd.nc,2)}</b></div>
+    <div class="kp"><small>Desempenho da regional</small><b>${esc(Sd.desempenho||"—")}</b><span>na solução dos alertas</span></div></div>
+   <div class="tw" style="margin-top:8px"><table class="grid"><tbody>
+    <tr><th class="l" style="width:220px">Regional</th><td>${esc(rf.regional||"#N/A")}</td><th class="l">Pricing</th><td>${esc(rf.pricing||"#N/A")}</td></tr>
+    <tr><th class="l">Dificuldade de checagem</th><td>${rf.dificuldade?`<span style="background:#FFC000;padding:1px 6px">${esc(rf.dificuldade)}</span>`:"#N/A"}</td><th class="l">Rating / Rating Agro</th><td>${esc(rf.rating||"SEM RATING AGRO")} · ${esc(rf.ragro||"NÃO É AGRO")}</td></tr>
+    ${S.car[cod]&&S.car[cod].texto?`<tr><th class="l">Característica</th><td colspan="3" class="wrap small">${esc(S.car[cod].texto)}</td></tr>`:""}</tbody></table></div></fieldset>
+   <fieldset class="box"><legend>Rótulos e motivos</legend><div class="tw"><table class="grid"><thead><tr><th>Rótulo / Motivo Entrega</th><th>Risco (valor)</th><th>%</th><th>Situação</th></tr></thead><tbody>${linhas.join("")}<tr class="tot"><td><b>TOTAL</b></td><td class="r num"><b>${money(Sd.tot)}</b></td><td class="r num"><b>100,0%</b></td><td></td></tr></tbody></table></div></fieldset>
+   <fieldset class="box"><legend>Sacados (${sacs.length})</legend><div class="tw"><table class="grid"><thead><tr><th>Cód.</th><th>Sacado</th><th>Cidade/UF</th><th>Títulos</th><th>Valor aberto</th><th>% confirmado</th><th>Pendente</th><th>Problema</th><th>Motivos</th></tr></thead><tbody>
+    ${sacs.slice(0,lim2).map(a=>`<tr><td class="num">${esc(a.sacc||"—")}</td><td>${esc(a.sac)}</td><td class="small">${esc([a.cid,a.uf].filter(Boolean).join("/"))}</td><td class="r num">${a.n}</td><td class="r num">${money(a.v)}</td><td class="r num">${pc(a.v?a.cv/a.v:0)}</td><td class="r num">${a.pv?money(a.pv):"—"}</td><td class="r num${a.prv?" bad":""}">${a.prv?money(a.prv):"—"}</td><td class="small wrap">${[...a.mot.entries()].sort((x,y)=>y[1]-x[1]).slice(0,3).map(([m,n])=>esc(m)+" ("+n+")").join(" · ")}</td></tr>`).join("")}</tbody></table></div>
+    ${sacs.length>25?`<button class="lk" data-act="gSacAll">${S.gSacAll?"Mostrar só os 25 maiores":"Mostrar todos os "+sacs.length+" sacados"}</button>`:""}</fieldset>`}
+function gDownload(date,b){const ceds=geralCeds(b);
+  return`<fieldset class="box"><legend>Dashboard</legend><p>Gera o dash de confirmação da carteira (o mesmo modelo do “Índice de Confirmação da Carteira”) com a base de ${fd(date)} e a visão atual (${S.visao==="minha"?"minha carteira":S.visao==="pessoa"?"carteira de "+esc(nomeB(S.visaoPessoa)):"equipe toda"}: ${ceds.length} cedentes). É um arquivo único, que abre em qualquer navegador e pode ser encaminhado.</p><button class="btn pri" data-act="gDash">Baixar dashboard (HTML)</button></fieldset>
+   <fieldset class="box"><legend>Planilha da síntese do risco</legend><p>Sai igual ao modelo: aba SINTESE DO RISCO com a tabela dinâmica e o filtro de Cedente em B4, para trocar de cedente no Excel. Todos os ${ceds.length} cedentes vão no arquivo; o cedente escolhido abaixo já abre selecionado.</p>
+    <div class="fbar"><input class="inp" id="g_ced" list="g_cedl2" placeholder="Cedente que abre selecionado (opcional)" style="min-width:380px"><datalist id="g_cedl2">${ceds.map(([c,n])=>`<option value="${esc(c)} - ${esc(n)}"></option>`).join("")}</datalist><button class="btn pri" data-act="gSint">Baixar planilha (Excel)</button></div></fieldset>`}
+function gImportar(date){const ds=regDatas().slice().reverse().slice(0,10);
+  return`<fieldset class="box"><legend>Colocar a base do dia</legend><p>Importe a planilha (abas BASE CARTEIRAS, BASE - TRANCHE e CHAMADOS), os relatórios separados ou o QPROF (.xlsx ou .csv). Sem data no nome do arquivo, entra na base de hoje (${fd(today())}), junto com o que já está lá. Os chamados da aba CHAMADOS entram na aba Chamados.</p><button class="btn pri" data-act="import">Importar base / QPROF</button></fieldset>
+   <fieldset class="box"><legend>Bases registradas</legend>${ds.length?`<div class="tw"><table class="grid"><thead><tr><th>Posição</th><th>Títulos na carteira</th><th>Títulos na tranche</th><th>Arquivos</th></tr></thead><tbody>${ds.map(d=>{const r=S.regs[d]||{};return`<tr${d===date?' class="sel"':""}><td>${fd(d)}</td><td class="r num">${fN(r.titCart||0)}</td><td class="r num">${fN(r.titTr||0)}</td><td class="small">${esc([r.arquivos&&r.arquivos.cart,r.arquivos&&r.arquivos.tr].filter(Boolean).join(" · "))}</td></tr>`}).join("")}</tbody></table></div>`:'<p class="muted">Nenhuma ainda.</p>'}</fieldset>`}
 function geralMontarFrame(){const f=document.querySelector("#main iframe.gframe");if(!f||!S.geralCache||f.dataset.key!==S.geralCache.key)return;if(f.dataset.on)return;f.dataset.on="1";
   const G=S.geralCache;if(!G.html)G.html=Geral.html(G.D,"Cedentes e sacados · "+G.D.meta.hoje);f.srcdoc=G.html}
+function gBuscar(){const el=$("#g_busca");if(!el)return;const t=el.value.trim();if(!t){S.gCed="";render();return}
+  const date=geralData();const b=S.bases.get(date);if(!b)return;const m=t.match(/^(\d+)/);let c=m?m[1]:"";
+  if(!c){const hit=geralCeds(b).filter(([k,n])=>Geral.nk(n).includes(Geral.nk(t)));if(hit.length===1)c=hit[0][0];else{toast(hit.length?hit.length+" cedentes com esse nome; escolha na lista.":"Cedente não encontrado nesta base.");return}}
+  S.gCed=c;S.gSacAll=false;render()}
 async function geralBaixarDash(){const date=geralData();const b=await loadBase(date);if(!b){toast("Sem base nesta data.");return}const G=geralDados(date,b);
   const nome=(G.D.meta.hoje||"").replace(/\//g,"-");const html=Geral.html(G.D,"Índice de Confirmação da Carteira · "+G.D.meta.hoje);
   await baixar(`Dash confirmacao carteira ${nome}.html`,html,"text/html")}
@@ -2187,6 +2239,8 @@ async function addImportFiles(files){
       const pl=await lerPlanilha(f,aviso);const names=Object.keys(pl.sheets),up=names.map(n=>n.toUpperCase());
       aviso("Organizando os títulos…");await pausa();
       const dn=dataDoNome(f.name);if(dn)$("#i_data").value=dn;
+      {const kc=names.find(n=>n.toUpperCase()==="CHAMADOS");if(kc){const lst=chDaPlanilha(pl.sheets[kc]);if(lst.length){D.chImp=(D.chImp||[]).concat(lst);D.chArq=f.name}}
+       if(kc&&!names.some(n=>/^BASE /i.test(n)))continue}
       const aoa=n=>pl.sheets[n]||[];
       const raw=n=>{const a=aoa(n);const h=Core.findHeader(a,["Cod. Cedente","Motivo Entrega"]);return h<0?null:{hdr:a[h],rows:a.slice(h+1).filter(r=>r&&r.some(v=>v!=null&&v!==""))}};
       const iC=up.indexOf("BASE CARTEIRAS"),iT=up.indexOf("BASE - TRANCHE");
@@ -2203,6 +2257,22 @@ async function addImportFiles(files){
   }catch(e){$("#i_err").textContent=e.message}
   drawImport();
 }
+/* chamados da aba CHAMADOS da planilha */
+function chDaPlanilha(aoa){const h=Core.findHeader(aoa||[],["Nº do chamado"]);if(h<0)return[];const H=aoa[h].map(x=>Core.nrm(x));const ix=n=>H.indexOf(Core.nrm(n));
+  const c={num:ix("Nº do chamado"),cod:ix("Cód. Cedente"),ab:ix("Data de abertura"),resp:ix("Data da resposta"),fech:ix("Data de fechamento"),mot:ix("Motivo do chamado"),ret:ix("Retorno do comercial"),ua:ix("Data da última atualização (nossa)"),ur:ix("Data do último retorno"),ef:ix("Retorno efetivo?"),n:ix("Nº de atualizações")};
+  const dt=v=>{if(v==null||v==="")return"";const n=typeof v==="number"?v:Core.toSerial(v);return n>20000?Core.serialISO(n):""};const tx=i=>i>=0&&aoa[r][i]!=null?String(aoa[r][i]).trim():"";let r;const out=[];
+  for(r=h+1;r<aoa.length;r++){const row=aoa[r];if(!row)continue;const num=tx(c.num);if(!num)continue;
+    out.push({numero:num,cod:String(Core.toInt(row[c.cod])||tx(c.cod)),abertura:dt(row[c.ab]),resposta:dt(row[c.resp]),fechamento:dt(row[c.fech]),motivo:tx(c.mot),retorno:tx(c.ret),ultAtualizacao:dt(row[c.ua]),ultRetorno:dt(row[c.ur]),efetivo:tx(c.ef),nAtualizacoes:c.n>=0&&row[c.n]!=null&&row[c.n]!==""?+row[c.n]||0:null})}
+  return out}
+const chChave=n=>String(n||"").trim().toUpperCase();
+function chResumoImp(){const ex=new Set(Object.values(S.chamados||{}).map(c=>chChave(c.numero)));const L=D.chImp;const novos=L.filter(c=>!ex.has(chChave(c.numero))).length;
+  return`<p class="info-box"><b>${L.length} chamado${L.length>1?"s":""} na aba CHAMADOS</b> de “${esc(D.chArq||"")}”: ${novos} novo${novos!==1?"s":""} e ${L.length-novos} já cadastrado${L.length-novos!==1?"s":""} (os dados da planilha atualizam os do site; o que estiver vazio na planilha fica como está no site).</p>`}
+async function chImportar(L,prog){const porNum=new Map();for(const[id,c]of Object.entries(S.chamados||{}))porNum.set(chChave(c.numero),id);
+  const docs=[];for(const c of L){const k=chChave(c.numero);const id=porNum.get(k)||("pl_"+k.replace(/[^\w-]+/g,"_"));const prev=(S.chamados||{})[id]||{};const v={...prev};
+    for(const[f,val]of Object.entries(c))if(val!==""&&val!=null)v[f]=val;v.numero=c.numero;v.criadoEm=prev.criadoEm||Date.now();v.origem=prev.origem||"planilha";docs.push({col:"chamados",id,data:v});porNum.set(k,id)}
+  if(store.kind==="sb"){for(let i=0;i<docs.length;i+=100){if(prog)prog(`Salvando chamados ${Math.min(i+100,docs.length)} de ${docs.length}…`);const{error}=await SBC.cli.from("docs").upsert(docs.slice(i,i+100));if(error)throw error;docs.slice(i,i+100).forEach(d=>store.apply(d.col,d.id,d.data))}}
+  else{for(let i=0;i<docs.length;i++){if(prog&&i%20===0)prog(`Salvando chamados ${i+1} de ${docs.length}…`);await store.set("chamados",docs[i].id,docs[i].data)}}
+  return docs.length}
 /* junta a base nova com a anterior: os cedentes do arquivo novo (e os demais da mesma pessoa/assistente) são trocados; os outros ficam */
 function juntarBase(velha,neu){
   const codsN=new Set(neu.rows.map(r=>r[1])),pessN=new Set(Object.values(neu.ass||{}).map(nrmN).filter(Boolean));
@@ -2216,7 +2286,7 @@ function juntarBase(velha,neu){
 async function drawImport(){
   $("#i_list").innerHTML=D.files.length?`<table class="grid"><thead><tr><th>Arquivo</th><th>Títulos</th><th>É a base da</th><th></th></tr></thead><tbody>${D.files.map((f,i)=>`<tr><td class="small wrap">${esc(f.nome)}</td><td class="r num">${f.b.rows.length}</td><td><select class="inp" data-ftipo="${i}"><option value="car"${f.tipo==="car"?" selected":""}>Carteira</option><option value="tra"${f.tipo==="tra"?" selected":""}>Tranche</option></select></td><td><button class="lk" data-act="rmFile" data-i="${i}">remover</button></td></tr>`).join("")}</tbody></table>`:"";
   const car=D.files.find(f=>f.tipo==="car"),tra=D.files.find(f=>f.tipo==="tra");
-  if(!car&&!tra){$("#i_prev").innerHTML="";$("#i_go").disabled=true;return}
+  if(!car&&!tra){if(D.chImp&&D.chImp.length){D.parsed=null;$("#i_prev").innerHTML=`<fieldset class="box in"><legend>Prévia</legend>${chResumoImp()}</fieldset>`;$("#i_go").disabled=false}else{$("#i_prev").innerHTML="";$("#i_go").disabled=true}return}
   const data=$("#i_data").value;const ex=S.regs[data];const pv=anterior(data);
   $("#i_prev").innerHTML='<p class="hint">Calculando…</p>';
   let bp=null;if(pv){bp=await loadBase(pv).catch(()=>null)}
@@ -2233,11 +2303,13 @@ async function drawImport(){
    ${baseJ&&(car||tra)?`<div class="${junta?"info-box":"warn-box"}">${junta?(infoJ&&infoJ.mant?`<b>Juntando com a base de ${fd(infoJ.de)}.</b> Os cedentes deste arquivo${infoJ.pess.size?` (de ${[...infoJ.pess].map(esc).join(", ")})`:""} entram no lugar dos anteriores; ${infoJ.mant} cedente${infoJ.mant>1?"s":""} de outras pessoas continua${infoJ.mant>1?"m":""} como estava${infoJ.mant>1?"m":""}.`:`Este arquivo tem todos os cedentes da base de ${fd(infoJ?infoJ.de:(old?data:pv))}; ela será atualizada.`):`<b>Substituir tudo:</b> a posição de ${fd(data)} fica só com os cedentes deste arquivo; os de outras pessoas saem desta data.`}
      <label class="ck small" style="display:block;margin-top:4px"><input type="checkbox" id="i_subst"${junta?"":" checked"}> Este arquivo é a base completa da equipe (substituir tudo em vez de juntar)</label></div>`:""}
    ${!tra&&!ex&&bp&&bp.tra?`<label class="ck small"><input type="checkbox" id="i_keepTr"${D.keepTr!==false?" checked":""}> Sem base da tranche: repetir a tranche de ${fd(pv)}</label>`:""}
+   ${D.chImp&&D.chImp.length?chResumoImp():""}
    ${!Object.keys(S.risco).length?`<p class="warn-box">A tabela de Risco Pricing está vazia, então todos usam a meta padrão. ${ehAdmin()?"Marque abaixo ou atualize em Ajustes.":"Peça para um administrador atualizar as tabelas de referência."}</p>`:""}
    ${D.wbRef&&ehAdmin()?`<label class="ck small"><input type="checkbox" id="i_ref"> Atualizar também as tabelas de referência deste arquivo (risco, grupos, limites, característica, metas)</label>`:""}</fieldset>`;
   $("#i_go").disabled=false;
 }
 async function doImport(){
+  if(D&&!D.parsed&&D.chImp&&D.chImp.length){const go=$("#i_go");go.disabled=true;go.textContent="Salvando chamados…";try{const n=await chImportar(D.chImp,t=>go.textContent=t);closeDrawer();toast(n+" chamados da planilha atualizados");S.view="chamados";location.hash="chamados";render()}catch(e){$("#i_err").textContent=e.message||String(e);go.disabled=false;go.textContent="Registrar"}return}
   if(!D||!D.parsed)return;const P=D.parsed,data=$("#i_data").value;if(!data){$("#i_err").textContent="Informe a data da posição.";return}
   if(data!==P.data){await drawImport();return doImport()}
   const go=$("#i_go");go.disabled=true;go.textContent="Registrando…";
@@ -2258,6 +2330,7 @@ async function doImport(){
     if(ok){
       S.raw={cart:Pp.car&&Pp.car.raw,tr:Pp.tra&&Pp.tra.raw};
       const prox=regDatas().find(x=>x>data);if(prox&&temBase){const bn=await loadBase(prox).catch(()=>null);if(bn){const ln=Core.calcular(bn.car,bn.tra,refObj(),{date:prox,prevCar:Pp.carB,prevTra:Pp.traB});await safe(store.set("reg",prox,{...S.regs[prox],linhas:JSON.parse(JSON.stringify(ln))}))}}
+      if(D.chImp&&D.chImp.length){try{go.textContent="Salvando chamados…";const n=await chImportar(D.chImp,t=>go.textContent=t);toast(n+" chamados da aba CHAMADOS atualizados")}catch(e){toast("Base registrada, mas os chamados não foram salvos: "+(e.message||e))}}
       S.dia=data;S.cmp=null;S.relDia=data;S.relCmp=null;closeDrawer();S.view="relatorios";S.relTab="mudou";location.hash="relatorios";render();
     }else{go.disabled=false;go.textContent="Registrar posição"}
   }catch(e){$("#i_err").textContent=e.message||"Erro ao registrar.";go.disabled=false;go.textContent="Registrar posição"}
@@ -2309,7 +2382,7 @@ document.addEventListener("click",async e=>{
   const el=e.target.closest("[data-act]");if(!el)return;const a=el.dataset.act,id=el.dataset.id;
   if(a!=="arm"&&S.armed){S.armed=null;$$(".btn.armed").forEach(b=>{b.classList.remove("armed");b.textContent=b.dataset.label||b.textContent})}
   switch(a){
-    case"go":location.hash=el.dataset.v;S.menuAberto=false;break;
+    case"go":location.hash=el.dataset.v;S.menuAberto=false;if(el.classList.contains("uit")&&document.activeElement)document.activeElement.blur();break;
     case"verPessoa":setVisao("pessoa",el.dataset.v);S.view="carteiras";location.hash="carteiras";render();break;
     case"voltarControle":setVisao("equipe");S.view="controle";location.hash="controle";render();break;
     case"ctlP":S.ctlP=el.dataset.v;S.ctl=null;render();break;
@@ -2328,6 +2401,9 @@ document.addEventListener("click",async e=>{
     case"manterSenha":manterSenha();break;
     case"rdAbrir":openRedefinir(el.dataset.v);break;
     case"gDash":geralBaixarDash();break;
+    case"gSub":S.gSub=el.dataset.v;render();break;
+    case"gSacAll":S.gSacAll=!S.gSacAll;render();break;
+    case"gBuscar":gBuscar();break;
     case"gSint":geralSintese($("#g_ced")?$("#g_ced").value:"");break;
     case"gSintCed":geralSintese(el.dataset.id);break;
     case"liberar":liberarAcesso(el.dataset.v,el);break;
@@ -2392,7 +2468,7 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("submit",e=>{const f=e.target;if(!f||!f.id)return;e.preventDefault();if(f.id==="fTroca")trocarSenha();else authSubmit(f.id)});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(D)closeDrawer();if(S.menuAberto){S.menuAberto=false;render()}}});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target&&e.target.id==="g_busca"){e.preventDefault();gBuscar();return}if(e.key==="Escape"){if(D)closeDrawer();if(S.menuAberto){S.menuAberto=false;render()}}});
 document.addEventListener("click",e=>{if(S.menuAberto&&!e.target.closest("#menuPop")&&!e.target.closest('[data-act="menu"]')){S.menuAberto=false;render()}},true);
 document.addEventListener("input",e=>{
   const t=e.target;
@@ -2422,6 +2498,7 @@ document.addEventListener("change",async e=>{
   if(t.id==="i_data")drawImport();
   if(t.id==="i_keepTr"){D.keepTr=t.checked;drawImport()}
   if(t.id==="g_dia"){S.geralDia=t.value;render();return}
+  if(t.id==="g_busca"){if(/^\d+ - /.test(t.value))gBuscar();return}
   if(t.id==="i_subst"){D.substituir=t.checked;drawImport()}
   if(t.dataset.mbnome){membroNome(t.dataset.mbnome,t.value.trim());return}
   if(t.dataset.ftipo!=null){D.files[+t.dataset.ftipo].tipo=t.value;drawImport()}
