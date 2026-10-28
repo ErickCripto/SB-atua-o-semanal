@@ -1092,7 +1092,10 @@ function vMenu(){
 }
 
 /* ---------- render ---------- */
+const ehAdmin=()=>store.kind!=="sb"||!!(SBC.eu&&SBC.eu.admin);
 function render(){
+  const tAj=document.querySelector('.tab[data-v="ajustes"]');if(tAj)tAj.hidden=!ehAdmin();
+  if(S.view==="ajustes"&&!ehAdmin()&&["sb"].includes(S.mode)){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}
   $$(".tab").forEach(t=>{if(t.dataset.v===S.view)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
   $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"?"Aguardando acesso":"Conectando…";
   const ub=$("#userBox");if(ub)ub.innerHTML=S.mode==="sb"&&SBC.user?`${esc(SBC.eu&&SBC.eu.nome||SBC.user.email)} · <button class="lk" data-act="trocarSenha">alterar senha</button> · <button class="lk" data-act="sair">sair</button>`:"";
@@ -1763,8 +1766,8 @@ async function drawImport(){
    <p class="small">${pv?(movOk?`Vai comparar título a título com a base de ${fd(pv)}.`:`A base de ${fd(pv)} não tem os títulos salvos; a comparação título a título começa a partir desta.`):"Primeira base: a comparação título a título começa na próxima importação."}</p>
    ${ex?`<p class="warn-box">Já existe uma posição em ${fd(data)}. Registrar vai substituí-la.</p>`:""}
    ${!tra&&!ex&&bp&&bp.tra?`<label class="ck small"><input type="checkbox" id="i_keepTr"${D.keepTr!==false?" checked":""}> Sem base da tranche: repetir a tranche de ${fd(pv)}</label>`:""}
-   ${!Object.keys(S.risco).length?'<p class="warn-box">A tabela de Risco Pricing está vazia, então todos usam a meta padrão. Marque abaixo ou atualize em Ajustes.</p>':""}
-   ${D.wbRef?`<label class="ck small"><input type="checkbox" id="i_ref"> Atualizar também as tabelas de referência deste arquivo (risco, grupos, limites, característica, metas)</label>`:""}</fieldset>`;
+   ${!Object.keys(S.risco).length?`<p class="warn-box">A tabela de Risco Pricing está vazia, então todos usam a meta padrão. ${ehAdmin()?"Marque abaixo ou atualize em Ajustes.":"Peça para um administrador atualizar as tabelas de referência."}</p>`:""}
+   ${D.wbRef&&ehAdmin()?`<label class="ck small"><input type="checkbox" id="i_ref"> Atualizar também as tabelas de referência deste arquivo (risco, grupos, limites, característica, metas)</label>`:""}</fieldset>`;
   $("#i_go").disabled=false;
 }
 async function doImport(){
