@@ -27,11 +27,26 @@ Os cálculos seguem a planilha *Controle de Carteiras – Confirmação* (abas C
 | `src/qprof.js` | Planilha de pendências e texto da pendência. |
 | `src/app.js` | Telas e interação. |
 | `scripts/build.py` | Junta os arquivos de `src/` no `index.html`. |
+| `config.js` | Endereço e chave pública do banco Supabase (vazio = sem login). |
+| `supabase/setup.sql` | Cria as tabelas, as regras de acesso e o histórico no Supabase. |
+| `supabase/emails/` | Modelos dos e-mails com código (cadastro e troca de senha). |
 
 Depois de mudar algo em `src/`, rode `python scripts/build.py` para gerar o `index.html` de novo.
 
 ## Onde os dados ficam
 
-Aberto pelo Claude (claude.ai), o site salva tudo na sua conta: anotações, chamados, posições de cada dia e as bases título a título. Aberto direto do arquivo ou do GitHub Pages, ele salva só no navegador, e a comparação título a título entre bases não fica guardada.
+- **Com o banco da equipe (Supabase)**: login com senha, código por e-mail para criar acesso e para recuperar a senha, dados compartilhados por toda a equipe e histórico de todas as alterações. Passo a passo em [GUIA-SUPABASE.md](GUIA-SUPABASE.md).
+- **Sem banco** (`config.js` vazio): o site salva tudo só no navegador (bases título a título no IndexedDB). Use Ajustes › Backup para guardar uma cópia.
+- **Aberto pelo Claude**: salva na conta do Claude de quem abriu.
 
-A leitura de Excel usa a biblioteca `xlsx-js-style` 1.2.0 (carregada do jsDelivr quando necessário).
+A leitura de Excel usa `xlsx-js-style` 1.2.0 e o login usa `@supabase/supabase-js` 2.45.4, os dois carregados do jsDelivr.
+
+## Publicar no Render
+
+O arquivo `render.yaml` já deixa o site pronto para o Render como site estático gratuito.
+
+1. Suba estes arquivos para o GitHub (branch `main`).
+2. Abra https://dashboard.render.com/blueprint/new?repo=https://github.com/ErickCripto/SB-atua-o-semanal
+3. Conecte o GitHub se o Render pedir, confira o serviço `sb-atuacao-semanal` e clique em **Apply**.
+
+O endereço fica parecido com `https://sb-atuacao-semanal.onrender.com`. A cada novo envio para a `main`, o Render publica de novo sozinho.

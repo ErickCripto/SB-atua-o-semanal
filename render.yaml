@@ -2,7 +2,7 @@ services:
   - type: web
     name: sb-atuacao-semanal
     runtime: static
-    buildCommand: mkdir -p public && cp index.html public/index.html
+    buildCommand: mkdir -p public && cp index.html config.js public/
     staticPublishPath: ./public
     routes:
       - type: rewrite

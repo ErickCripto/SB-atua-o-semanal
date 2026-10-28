@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
 </head>
 <body>
 <title>Mesa de Carteiras</title>
@@ -44,6 +46,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .bar .app{font-weight:bold;color:var(--teal-d);font-size:14px}
 .bar .info{margin-left:auto;display:flex;gap:14px;color:var(--mut);font-size:11.5px;flex-wrap:wrap}
 .bar .info b{color:var(--txt)}
+.tabs[hidden]{display:none!important}
 .tabs{display:flex;gap:3px;flex-wrap:wrap;margin-top:8px;padding-left:10px}
 .tab{border:1px solid var(--teal-d);border-bottom:0;background:linear-gradient(180deg,var(--teal-l),var(--teal));color:#fff;font-weight:bold;padding:6px 16px 7px;border-radius:9px 9px 0 0;cursor:pointer;font-size:12px}
 .tab:hover{background:linear-gradient(180deg,#39A086,var(--teal-l))}
@@ -155,13 +158,17 @@ table.grid{border-collapse:collapse;width:100%}
 .xbtn:hover{background:rgba(255,255,255,.18)}
 .win-b{overflow:auto;padding:12px;display:grid;gap:10px;align-content:start;flex:1}
 .win-f{display:flex;gap:8px;justify-content:flex-end;padding:8px 12px;border-top:1px solid var(--line);background:#F6F8F7;flex-wrap:wrap}
+.login{display:flex;justify-content:center;padding:30px 0 50px}
+.lwin{width:min(440px,100%);border:1px solid var(--teal-d);border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.lbody{padding:0 0 4px}.lbody .pbody{display:grid;gap:8px}.lbody p{margin:0}
+.lwin .form .inp{width:100%}.inp.code{font-size:20px;letter-spacing:.3em;text-align:center;font-family:Consolas,monospace}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#20332D;color:#fff;padding:8px 16px;border-radius:6px;z-index:30;font-weight:bold;max-width:calc(100% - 32px)}
 @media (prefers-reduced-motion:no-preference){.win{animation:slide .15s ease-out}@keyframes slide{from{transform:translateX(18px);opacity:.7}}}
 </style>
 <div class="menu" aria-hidden="true"><span>MENU</span></div>
 <div class="shell">
  <div class="strip">
-  <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="basePos"></span><span>Situação: <b id="saveMode">Conectando…</b></span></span></div>
+  <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="userBox"></span><span id="basePos"></span><span>Situação: <b id="saveMode">Conectando…</b></span></span></div>
   <nav class="tabs">
    <button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button><button class="tab" data-act="go" data-v="ajustes">Ajustes</button>
   </nav>
@@ -711,6 +718,7 @@ const grpNome=cod=>{const g=grpOf(cod);return g.nome&&g.cod.startsWith("G_")?g.n
 
 /* ---------- armazenamento ---------- */
 const store={kind:null,db:null,
+  remote(){return this.kind==="db"||this.kind==="sb"},
   async init(){
     let db=null;
     if(window.claude&&typeof window.claude.use==="function"){try{db=await window.claude.use("db")}catch(e){db=null}}
@@ -726,6 +734,8 @@ const store={kind:null,db:null,
       sub(db.collection("qprof").orderBy("criadoEm","desc").limit(60),s=>{const m={};s.docs.forEach(d=>m[d.id]=d.data());S.qprofs=m});
       sub(db.collection("feito"),s=>{const m={};s.docs.forEach(d=>m[d.id]=(d.data().ids)||{});S.feito=m});
       setTimeout(()=>{if(S.mode==="loading"){S.mode="db";afterLoad()}},9000);
+    }else if(SBC.conf()){
+      this.kind="sb";await sbIniciar();
     }else{
       this.kind="local";
       try{const raw=JSON.parse(localStorage.getItem("mc3")||"{}");if(raw.cfg)S.cfg={...CFG_PADRAO,...raw.cfg};["risco","lim","grupos","diario","car","anot","regs","chamados","parecer","qprofs","feito"].forEach(k=>{if(raw[k])S[k]=raw[k]})}catch(e){}
@@ -733,25 +743,38 @@ const store={kind:null,db:null,
     }
   },
   persist(){try{localStorage.setItem("mc3",JSON.stringify({cfg:S.cfg,risco:S.risco,lim:S.lim,grupos:S.grupos,diario:S.diario,car:S.car,anot:S.anot,regs:S.regs,chamados:S.chamados,parecer:S.parecer,qprofs:S.qprofs,feito:S.feito}))}catch(e){toast("O navegador não deixou salvar (espaço cheio).")}},
-  local(col,id,val){
+  apply(col,id,val){
     if(col==="base")return;
     if(col==="cfg"){if(id==="geral")S.cfg=val?{...CFG_PADRAO,...val}:{...CFG_PADRAO};const k={risco:"risco",limites:"lim",grupos:"grupos",diario:"diario"}[id];if(k)S[k]=val?val.map:{}}
     else if(col==="feito"){if(val==null)delete S.feito[id];else S.feito[id]=val.ids}
-    else{const k={caract:"car",anot:"anot",reg:"regs",chamados:"chamados",parecer:"parecer",qprof:"qprofs"}[col];if(val==null)delete S[k][id];else S[k][id]=val}
-    this.persist();render();
+    else{const k={caract:"car",anot:"anot",reg:"regs",chamados:"chamados",parecer:"parecer",qprof:"qprofs"}[col];if(!k)return;if(val==null)delete S[k][id];else S[k][id]=val}
   },
-  async set(col,id,val){if(this.kind==="db")return this.db.collection(col).doc(id).set(val);this.local(col,id,val)},
-  async add(col,val){if(this.kind==="db"){const r=await this.db.collection(col).add(val);return r.id}const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);this.local(col,id,val);return id},
-  async del(col,id){if(this.kind==="db")return this.db.collection(col).doc(id).delete();this.local(col,id,null)},
-  async baseDocs(date){if(this.kind!=="db")return[];const s=await this.db.collection("base").where("date","==",date).get();return s.docs.map(d=>({id:d.id,...d.data()}))}
+  local(col,id,val){this.apply(col,id,val);this.persist();render()},
+  async set(col,id,val){if(this.kind==="db")return this.db.collection(col).doc(id).set(val);
+    if(this.kind==="sb"){const{error}=await SBC.cli.from("docs").upsert({col,id,data:val});if(error)throw error;this.apply(col,id,val);sbRender();return}
+    this.local(col,id,val)},
+  async add(col,val){if(this.kind==="db"){const r=await this.db.collection(col).add(val);return r.id}const id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    if(this.kind==="sb"){await this.set(col,id,val);return id}this.local(col,id,val);return id},
+  async del(col,id){if(this.kind==="db")return this.db.collection(col).doc(id).delete();
+    if(this.kind==="sb"){const{error}=await SBC.cli.from("docs").delete().eq("col",col).eq("id",id);if(error)throw error;this.apply(col,id,null);sbRender();return}
+    this.local(col,id,null)},
+  async baseDocs(date){
+    if(this.kind==="db"){const s=await this.db.collection("base").where("date","==",date).get();return s.docs.map(d=>({id:d.id,...d.data()}))}
+    if(this.kind==="sb"){const{data,error}=await SBC.cli.from("docs").select("id,data").eq("col","base").like("id",date+"%");if(error)throw error;return(data||[]).map(r=>({id:r.id,...r.data}))}
+    return[]}
 };
 async function safe(p,ok){try{await p;if(ok)toast(ok);return true}catch(e){toast(e&&e.code==="quota_exceeded"?"Limite de armazenamento atingido. Exclua posições antigas em Ajustes.":"Não foi possível salvar ("+(e&&e.code||e&&e.message||"erro")+"). Tente de novo.");return false}}
 function afterLoad(){render()}
 
+/* ---------- IndexedDB (bases título a título fora do Claude) ---------- */
+const idb={p:null,open(){if(this.p)return this.p;this.p=new Promise((res,rej)=>{try{const r=indexedDB.open("mesa-carteiras",1);r.onupgradeneeded=()=>r.result.createObjectStore("bases");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}});return this.p},
+  async tx(mode,fn){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction("bases",mode);const st=t.objectStore("bases");const r=fn(st);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})},
+  get(k){return this.tx("readonly",st=>st.get(k)).catch(()=>null)},put(k,v){return this.tx("readwrite",st=>st.put(v,k)).then(()=>true).catch(()=>false)},del(k){return this.tx("readwrite",st=>st.delete(k)).catch(()=>null)}};
+
 /* ---------- bases título a título (sob demanda) ---------- */
 async function loadBase(date){
   if(!date)return null;if(S.bases.has(date))return S.bases.get(date);
-  if(store.kind!=="db"){return null}
+  if(store.kind==="local"){const v=await idb.get(date);S.bases.set(date,v||null);return v||null}
   const docs=await store.baseDocs(date);const out={};
   ["car","tra"].forEach(k=>{const dict=docs.find(d=>d.kind===k&&d.part===-1);if(!dict)return;
     const parts=docs.filter(d=>d.kind===k&&d.part>=0).sort((a,b)=>a.part-b.part);if(parts.length!==dict.parts)return;
@@ -776,12 +799,13 @@ let xlsxP=null;
 function XLSXlib(){if(window.XLSX)return Promise.resolve(window.XLSX);if(xlsxP)return xlsxP;
   xlsxP=new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js";s.onload=()=>res(window.XLSX);s.onerror=()=>{xlsxP=null;rej(new Error("Não consegui carregar o leitor de Excel. Verifique a internet e tente de novo."))};document.head.appendChild(s)});return xlsxP}
 async function lerArquivo(file,dates){const X=await XLSXlib();const buf=await file.arrayBuffer();return X.read(buf,{type:"array",cellDates:!!dates})}
-async function salvarArquivo(wb,nome){
-  const X=await XLSXlib();const out=X.write(wb,{bookType:"xlsx",type:"array"});
+async function baixar(nome,data,tipo){
   const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
-  if(!dl){toast("Esta visualização não permite baixar arquivos. Abra o site pelo Claude.");return}
-  try{await dl.save({filename:nome,data:new Uint8Array(out)});toast("Arquivo pronto")}catch(e){if(e&&e.code!=="declined")toast("Não foi possível baixar ("+(e.code||"erro")+").")}
+  if(dl){try{await dl.save({filename:nome,data});toast("Arquivo pronto")}catch(e){if(e&&e.code!=="declined")toast("Não foi possível baixar ("+(e.code||"erro")+").")}return}
+  if(window.claude){toast("Esta visualização não permite baixar arquivos.");return}
+  const url=URL.createObjectURL(new Blob([data],{type:tipo||"application/octet-stream"}));const a=document.createElement("a");a.href=url;a.download=nome;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},2000);toast("Arquivo pronto")
 }
+async function salvarArquivo(wb,nome){const X=await XLSXlib();const out=X.write(wb,{bookType:"xlsx",type:"array"});await baixar(nome,new Uint8Array(out),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
 function copiar(t,msg){navigator.clipboard.writeText(t).then(()=>toast(msg),()=>toast("Não deu para copiar automaticamente; selecione e copie o texto."))}
 function tabelaTexto(tbl){return[...tbl.querySelectorAll("tr")].map(tr=>[...tr.children].map(td=>td.innerText.replace(/\s+/g," ").trim()).join("\t")).join("\n")}
 
@@ -817,10 +841,152 @@ const cedCell=(cod,nome,extra)=>{const g=grpNome(cod);return`<td class="ced"><bu
 const sub=(tabs,cur,act)=>`<div class="subtabs">${tabs.map(([k,t])=>`<button class="stab${cur===k?" on":""}" data-act="${act}" data-v="${k}">${t}</button>`).join("")}</div>`;
 const seg=(act,cur,opts)=>`<span class="seg">${opts.map(([k,t])=>`<button data-act="${act}" data-v="${k}" class="${cur===k?"on":""}">${t}</button>`).join("")}</span>`;
 
+/* ---------- Supabase (login e banco da equipe) ---------- */
+const SBC={cli:null,user:null,eu:null,membros:[],hist:null,
+  conf(){if(!window.supabase||!window.supabase.createClient)return null;let c=null;try{c=window.MESA_SB&&window.MESA_SB.url?window.MESA_SB:JSON.parse(localStorage.getItem("mesa_sb")||"null")}catch(e){}if(c&&c.url)c={...c,url:String(c.url).trim().replace(/\/(rest|auth)\/v1\/?$/,"").replace(/\/+$/,"")};return c&&c.url&&c.key?c:null}};
+let sbT=null;function sbRender(){clearTimeout(sbT);sbT=setTimeout(render,120)}
+async function sbIniciar(){
+  const c=SBC.conf();SBC.cli=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true}});
+  SBC.cli.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"){SBC.user=null;SBC.eu=null;S.mode="login";S.auth={tab:"entrar"};render()}});
+  let ses=null;try{const{data}=await SBC.cli.auth.getSession();ses=data&&data.session}catch(e){}
+  if(ses)await sbEntrar(ses.user);else{S.mode="login";render()}
+}
+async function sbTodos(q){let out=[],from=0;for(;;){const{data,error}=await q().range(from,from+999);if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000}return out}
+async function sbEntrar(user){
+  SBC.user=user;S.mode="loading";render();
+  try{
+    const{data:mem,error}=await SBC.cli.from("membros").select("*");if(error)throw error;
+    SBC.membros=mem||[];SBC.eu=SBC.membros.find(m=>String(m.email).toLowerCase()===String(user.email).toLowerCase())||null;
+    if(!SBC.eu){S.mode="semacesso";render();return}
+    for(const col of["cfg","caract","anot","chamados","parecer","feito"]){const rows=await sbTodos(()=>SBC.cli.from("docs").select("id,data").eq("col",col));rows.forEach(r=>store.apply(col,r.id,r.data))}
+    const rg=await SBC.cli.from("docs").select("id,data").eq("col","reg").order("id",{ascending:false}).limit(70);if(rg.error)throw rg.error;(rg.data||[]).forEach(r=>store.apply("reg",r.id,r.data));
+    const qp=await SBC.cli.from("docs").select("id,data").eq("col","qprof").order("updated_at",{ascending:false}).limit(60);(qp.data||[]).forEach(r=>store.apply("qprof",r.id,r.data));
+    if(!SBC.canal)SBC.canal=SBC.cli.channel("docs-mesa").on("postgres_changes",{event:"*",schema:"public",table:"docs"},p=>{const row=p.eventType==="DELETE"?p.old:p.new;if(!row||!row.col||row.col==="base")return;store.apply(row.col,row.id,p.eventType==="DELETE"?null:row.data);sbRender()}).subscribe();
+    S.mode="sb";render();
+  }catch(e){S.mode="login";S.auth={tab:"entrar",err:"Não consegui carregar os dados ("+(e.message||e)+"). Confira se o setup.sql foi rodado no Supabase."};render()}
+}
+const vIn=id=>{const el=document.getElementById(id);return el?el.value:""};
+function trErr(e){const m=String(e&&e.message||e||"");
+  if(/invalid login credentials/i.test(m))return"E-mail ou senha incorretos.";
+  if(/email not confirmed/i.test(m))return"Este e-mail ainda não foi confirmado. Use “Criar acesso” para receber o código de novo.";
+  if(/expired|invalid/i.test(m)&&/token|otp|code/i.test(m))return"Código inválido ou vencido. Peça um novo código.";
+  if(/rate limit|security purposes|too many/i.test(m))return"Muitas tentativas seguidas. Espere um minuto e tente de novo.";
+  if(/already registered|already exists/i.test(m))return"Este e-mail já tem acesso. Use “Entrar” ou “Esqueci a senha”.";
+  if(/password should be|weak password/i.test(m))return"Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.";
+  if(/fetch|network/i.test(m))return"Sem conexão com o banco. Verifique a internet.";
+  return m||"Algo deu errado. Tente de novo.";}
+const senhaOk=(a,b)=>a.length<8?"A senha precisa ter pelo menos 8 caracteres.":a!==b?"As senhas digitadas não são iguais.":"";
+const emailOk=e=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+function authSet(o){S.auth={...(S.auth||{}),err:"",msg:"",...o};render()}
+const authErr=m=>{S.auth={...(S.auth||{}),err:m,busy:false};render()};
+function vLogin(){
+  const A=S.auth||(S.auth={tab:"entrar"});const t=A.tab||"entrar";
+  const box=(body)=>`<div class="login"><div class="lwin"><div class="win-h"><span>Mesa de Carteiras · Acesso</span></div><div class="lbody">${body}</div></div></div>`;
+  if(S.mode==="semacesso")return box(`<p><b>${esc(SBC.user&&SBC.user.email)}</b> entrou, mas ainda não está liberado na equipe.</p><p class="muted">Peça para o administrador incluir este e-mail em Ajustes › Equipe. Depois, clique em “Tentar de novo”.</p><div class="fbar"><button class="btn pri" data-act="authRetry">Tentar de novo</button><button class="btn" data-act="sair">Sair</button></div>`);
+  const tabs=sub([["entrar","Entrar"],["criar","Criar acesso"],["esqueci","Esqueci a senha"]],t,"authTab");
+  const msg=(A.err?`<div class="warn-box">${esc(A.err)}</div>`:"")+(A.msg?`<div class="ok-box">${esc(A.msg)}</div>`:"");
+  const dis=A.busy?" disabled":"";let f="";
+  if(t==="entrar")f=`<form id="fEntrar" class="form"><label class="fl">E-mail<input class="inp" id="au_email" type="email" autocomplete="username" value="${esc(A.email||"")}"></label>
+   <label class="fl">Senha<input class="inp" id="au_senha" type="password" autocomplete="current-password"></label><button class="btn pri" type="submit"${dis}>${A.busy?"Entrando…":"Entrar"}</button>
+   <p class="small muted">Esqueceu a senha? Use a aba “Esqueci a senha” e receba um código no e-mail.</p></form>`;
+  else if(t==="criar"&&!A.step)f=`<form id="fCriar" class="form"><label class="fl">Nome<input class="inp" id="au_nome" autocomplete="name" value="${esc(A.nome||"")}"></label><label class="fl">E-mail<input class="inp" id="au_email" type="email" autocomplete="username" value="${esc(A.email||"")}"></label>
+   <label class="fl">Senha (mínimo 8 caracteres)<input class="inp" id="au_s1" type="password" autocomplete="new-password"></label><label class="fl">Repita a senha<input class="inp" id="au_s2" type="password" autocomplete="new-password"></label>
+   <button class="btn pri" type="submit"${dis}>${A.busy?"Criando…":"Criar acesso"}</button><p class="small muted">Vamos mandar um código para o seu e-mail para confirmar. Os dados da equipe só aparecem para e-mails liberados pelo administrador.</p></form>`;
+  else if(t==="criar")f=`<form id="fConfirmar" class="form"><p>Enviamos um código para <b>${esc(A.email)}</b>. Digite abaixo para ativar o acesso.</p><label class="fl">Código do e-mail<input class="inp code" id="au_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="10"></label>
+   <button class="btn pri" type="submit"${dis}>${A.busy?"Confirmando…":"Confirmar"}</button><div class="fbar"><button type="button" class="lk" data-act="authReenviar">Reenviar código</button><button type="button" class="lk" data-act="authTab" data-v="criar">Trocar e-mail</button></div></form>`;
+  else if(!A.step)f=`<form id="fEsqueci" class="form"><p class="small">Digite o e-mail do seu cadastro. Vamos mandar um código para você criar uma senha nova.</p><label class="fl">E-mail<input class="inp" id="au_email" type="email" autocomplete="username" value="${esc(A.email||"")}"></label>
+   <button class="btn pri" type="submit"${dis}>${A.busy?"Enviando…":"Enviar código"}</button></form>`;
+  else f=`<form id="fNova" class="form"><p>Se <b>${esc(A.email)}</b> estiver cadastrado, chegou um código no e-mail (confira também o spam).</p><label class="fl">Código do e-mail<input class="inp code" id="au_cod" inputmode="numeric" autocomplete="one-time-code" maxlength="10"></label>
+   <label class="fl">Nova senha (mínimo 8 caracteres)<input class="inp" id="au_s1" type="password" autocomplete="new-password"></label><label class="fl">Repita a nova senha<input class="inp" id="au_s2" type="password" autocomplete="new-password"></label>
+   <button class="btn pri" type="submit"${dis}>${A.busy?"Alterando…":"Alterar senha"}</button><div class="fbar"><button type="button" class="lk" data-act="authReenviar">Reenviar código</button><button type="button" class="lk" data-act="authTab" data-v="esqueci">Trocar e-mail</button></div></form>`;
+  return box(tabs+`<div class="pbody">${msg}${f}</div>`);
+}
+async function authSubmit(id){
+  const A=S.auth||{};const cli=SBC.cli;if(!cli)return;
+  const busy=()=>{S.auth={...S.auth,busy:true,err:"",msg:""};render()};
+  try{
+    if(id==="fEntrar"){const email=vIn("au_email").trim().toLowerCase(),senha=vIn("au_senha");if(!emailOk(email)||!senha)return authErr("Informe o e-mail e a senha.");
+      S.auth={...A,email};busy();const{data,error}=await cli.auth.signInWithPassword({email,password:senha});if(error){if(/not confirmed/i.test(error.message)){S.auth={tab:"criar",step:1,email};await cli.auth.resend({type:"signup",email}).catch(()=>{});return authErr(trErr(error))}return authErr(trErr(error))}
+      S.auth={tab:"entrar"};await sbEntrar(data.user)}
+    else if(id==="fCriar"){const nome=vIn("au_nome").trim(),email=vIn("au_email").trim().toLowerCase(),s1=vIn("au_s1"),s2=vIn("au_s2");
+      if(!nome)return authErr("Informe o seu nome.");if(!emailOk(email))return authErr("E-mail inválido.");const e=senhaOk(s1,s2);if(e)return authErr(e);
+      S.auth={...A,nome,email};busy();const{data,error}=await cli.auth.signUp({email,password:s1,options:{data:{nome}}});if(error)return authErr(trErr(error));
+      if(data.session){S.auth={tab:"entrar"};await sbEntrar(data.user);return}
+      S.auth={tab:"criar",step:1,email,msg:"Código enviado para "+email+"."};render()}
+    else if(id==="fConfirmar"){const token=vIn("au_cod").replace(/\D/g,"");if(token.length<6)return authErr("Digite o código de 6 dígitos que chegou no e-mail.");busy();
+      let r=await cli.auth.verifyOtp({email:A.email,token,type:"signup"});if(r.error)r=await cli.auth.verifyOtp({email:A.email,token,type:"email"});if(r.error)return authErr(trErr(r.error));
+      S.auth={tab:"entrar"};toast("Acesso confirmado");await sbEntrar(r.data.user)}
+    else if(id==="fEsqueci"){const email=vIn("au_email").trim().toLowerCase();if(!emailOk(email))return authErr("E-mail inválido.");S.auth={...A,email};busy();
+      const{error}=await cli.auth.resetPasswordForEmail(email);if(error)return authErr(trErr(error));S.auth={tab:"esqueci",step:1,email};render()}
+    else if(id==="fNova"){const token=vIn("au_cod").replace(/\D/g,""),s1=vIn("au_s1"),s2=vIn("au_s2");if(token.length<6)return authErr("Digite o código de 6 dígitos que chegou no e-mail.");const e=senhaOk(s1,s2);if(e)return authErr(e);busy();
+      const v=await cli.auth.verifyOtp({email:A.email,token,type:"recovery"});if(v.error)return authErr(trErr(v.error));
+      const u=await cli.auth.updateUser({password:s1});if(u.error)return authErr(trErr(u.error));S.auth={tab:"entrar"};toast("Senha alterada");await sbEntrar(v.data.user)}
+  }catch(e){authErr(trErr(e))}
+}
+async function authReenviar(){const A=S.auth||{};try{const r=A.tab==="criar"?await SBC.cli.auth.resend({type:"signup",email:A.email}):await SBC.cli.auth.resetPasswordForEmail(A.email);if(r&&r.error)return authErr(trErr(r.error));S.auth={...A,err:"",msg:"Código reenviado para "+A.email+"."};render()}catch(e){authErr(trErr(e))}}
+function openTrocarSenha(){D={kind:"senha"};drawer("Alterar senha",`<form id="fTroca" class="form"><label class="fl">Nova senha (mínimo 8 caracteres)<input class="inp" id="ts_1" type="password" autocomplete="new-password"></label><label class="fl">Repita a nova senha<input class="inp" id="ts_2" type="password" autocomplete="new-password"></label><div class="err" id="ts_err"></div><button class="btn pri" type="submit">Salvar nova senha</button></form>`,"")}
+async function trocarSenha(){const s1=vIn("ts_1"),s2=vIn("ts_2"),e=senhaOk(s1,s2);if(e){$("#ts_err").textContent=e;return}const{error}=await SBC.cli.auth.updateUser({password:s1});if(error){$("#ts_err").textContent=trErr(error);return}closeDrawer();toast("Senha alterada")}
+
+/* equipe, histórico e backup */
+async function membrosRecarregar(){const{data}=await SBC.cli.from("membros").select("*").order("email");SBC.membros=data||[];render()}
+async function membroAdd(){const email=vIn("mb_email").trim().toLowerCase(),nome=vIn("mb_nome").trim(),admin=$("#mb_admin").checked;if(!emailOk(email)){toast("E-mail inválido.");return}
+  const{error}=await SBC.cli.from("membros").upsert({email,nome,admin});if(error){toast("Não foi possível incluir ("+error.message+").");return}toast(email+" liberado");membrosRecarregar()}
+async function membroDel(email){const{error}=await SBC.cli.from("membros").delete().eq("email",email);if(error){toast("Não foi possível remover ("+error.message+").");return}toast("Acesso removido");membrosRecarregar()}
+async function membroAdmin(email,on){const{error}=await SBC.cli.from("membros").update({admin:on}).eq("email",email);if(error){toast(error.message);return}membrosRecarregar()}
+async function histCarregar(){const{data,error}=await SBC.cli.from("historico").select("*").order("alterado_em",{ascending:false}).limit(150);if(error){toast(error.message);return}SBC.hist=data||[];render()}
+function histRotulo(h){const d=h.data||{};if(h.col==="anot")return"Anotação · "+nomeB(nomeCed(h.id)||h.id);if(h.col==="chamados")return"Chamado "+(d.numero||"");if(h.col==="parecer")return"Parecer da semana de "+fd(h.id);if(h.col==="reg")return"Posição de "+fd(h.id);if(h.col==="cfg")return"Parâmetros ("+h.id+")";if(h.col==="feito")return"Marcações de feito";if(h.col==="caract")return"Característica · "+h.id;if(h.col==="qprof")return"Pendência salva · "+nomeB(d.cedente||"");return h.col+" · "+h.id}
+function histResumo(h){const d=h.data||{};if(h.col==="anot")return[d.acao&&"Ação: "+d.acao,d.pendencia&&"Pendência: "+d.pendencia,d.proximo&&"Próximo: "+d.proximo].filter(Boolean).join(" · ");if(h.col==="chamados")return[d.motivo,d.retorno].filter(Boolean).join(" · ");if(h.col==="parecer")return(d.resumo||"").slice(0,160);return""}
+async function histRestaurar(hid){const h=(SBC.hist||[]).find(x=>String(x.hid)===String(hid));if(!h)return;await safe(store.set(h.col,h.id,h.data),"Versão restaurada");histCarregar()}
+function backupDocs(){const out=[];const pushMap=(col,m,wrap)=>Object.entries(m).forEach(([id,v])=>out.push({col,id,data:wrap?wrap(v):v}));
+  out.push({col:"cfg",id:"geral",data:S.cfg},{col:"cfg",id:"risco",data:{map:S.risco}},{col:"cfg",id:"limites",data:{map:S.lim}},{col:"cfg",id:"grupos",data:{map:S.grupos}},{col:"cfg",id:"diario",data:{map:S.diario}});
+  pushMap("caract",S.car);pushMap("anot",S.anot);pushMap("reg",S.regs);pushMap("chamados",S.chamados);pushMap("parecer",S.parecer);pushMap("qprof",S.qprofs);pushMap("feito",S.feito,v=>({ids:v}));return out}
+async function backupBaixar(){
+  toast("Preparando backup…");const docs=backupDocs();
+  for(const d of regDatas()){if(!S.regs[d].temBase)continue;try{if(store.remote()){(await store.baseDocs(d)).forEach(x=>{const{id,...data}=x;docs.push({col:"base",id,data})})}else{const b=await idb.get(d);if(b)["car","tra"].forEach(k=>{if(b[k])baseChunks(d,k,b[k]).forEach(x=>docs.push({col:"base",id:x.id,data:x.data}))})}}catch(e){}}
+  await baixar("mesa-carteiras-backup-"+today()+".json",new TextEncoder().encode(JSON.stringify({app:"mesa-carteiras",v:1,gerado:new Date().toISOString(),docs})),"application/json");
+}
+async function backupLer(file){
+  try{const j=JSON.parse(await file.text());if(!j||j.app!=="mesa-carteiras"||!Array.isArray(j.docs))throw new Error("Este arquivo não é um backup da Mesa de Carteiras.");
+    const n=j.docs.filter(d=>d.col!=="base").length,nb=new Set(j.docs.filter(d=>d.col==="base").map(d=>d.data.date)).size;D={kind:"backup",j};
+    drawer("Restaurar backup",`<p>Backup de <b>${new Date(j.gerado).toLocaleString("pt-BR")}</b>: ${n} registros (anotações, chamados, posições, parâmetros…) e ${nb} base(s) título a título.</p><p class="warn-box">Os registros com o mesmo nome no ${store.kind==="sb"?"banco da equipe":"site"} serão substituídos pela versão do backup. Registros que só existem aqui ficam como estão.</p><div class="err" id="bk_err"></div>`,`<button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="backupAplicar" id="bk_go">Restaurar</button>`)}
+  catch(e){toast(e.message||"Arquivo inválido.")}
+}
+async function backupAplicar(){
+  const j=D&&D.j;if(!j)return;const go=$("#bk_go");go.disabled=true;go.textContent="Restaurando…";
+  try{
+    if(store.kind==="sb"){const small=j.docs.filter(d=>d.col!=="base"),big=j.docs.filter(d=>d.col==="base");
+      for(let i=0;i<small.length;i+=40){const{error}=await SBC.cli.from("docs").upsert(small.slice(i,i+40));if(error)throw error;go.textContent=`Restaurando… ${Math.min(i+40,small.length)}/${small.length}`}
+      for(let i=0;i<big.length;i++){const{error}=await SBC.cli.from("docs").upsert(big[i]);if(error)throw error;go.textContent=`Bases… ${i+1}/${big.length}`}
+      j.docs.forEach(d=>store.apply(d.col,d.id,d.data));}
+    else if(store.kind==="local"){j.docs.forEach(d=>store.apply(d.col,d.id,d.data));store.persist();
+      const by={};j.docs.filter(d=>d.col==="base").forEach(d=>{(by[d.data.date]=by[d.data.date]||[]).push({id:d.id,...d.data})});
+      for(const[date,docs]of Object.entries(by)){const out={};["car","tra"].forEach(k=>{const dict=docs.find(x=>x.kind===k&&x.part===-1);if(!dict)return;const parts=docs.filter(x=>x.kind===k&&x.part>=0).sort((a,b)=>a.part-b.part);const rows=[];parts.forEach(p=>rows.push(...JSON.parse(p.r)));out[k]={rows,mot:dict.mot,sac:dict.sac,rot:dict.rot,dst:dict.dst,org:dict.org||{},ced:dict.ced||{},regional:dict.regional||""}});await idb.put(date,out)}}
+    else{for(const d of j.docs)await store.set(d.col,d.id,d.data)}
+    S.bases.clear();closeDrawer();toast("Backup restaurado");render();
+  }catch(e){const er=$("#bk_err");if(er)er.textContent="Parou no meio: "+(e.message||e)+". Pode tentar de novo; o que já foi gravado fica.";go.disabled=false;go.textContent="Tentar de novo"}
+}
+function vEquipeHist(){
+  if(store.kind!=="sb")return"";const adm=SBC.eu&&SBC.eu.admin;const H=SBC.hist;
+  return`<fieldset class="box"><legend>Equipe (${SBC.membros.length})</legend><div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>E-mail</th><th>Nome</th><th>Administrador</th><th>Liberado em</th><th></th></tr></thead><tbody>
+    ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td>${adm&&!eu?delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
+    ${adm?`<div class="fgrid" style="margin-top:8px"><label class="fl">E-mail<input class="inp" id="mb_email" type="email"></label><label class="fl">Nome<input class="inp" id="mb_nome"></label><label class="ck"><input type="checkbox" id="mb_admin"> administrador</label><button class="btn pri" data-act="mbAdd">Liberar acesso</button></div>
+    <p class="hint">Depois de liberar, a pessoa entra no site, clica em “Criar acesso” com este e-mail e confirma com o código que chega.</p>`:'<p class="hint">Só administradores incluem ou removem pessoas.</p>'}</fieldset>
+   <fieldset class="box"><legend>Histórico de alterações</legend><p class="hint">Toda alteração ou exclusão guarda a versão anterior. Aqui aparecem as últimas 150, com quem alterou e quando; “Restaurar” volta para aquela versão.</p>
+    ${H?`<div class="tw" style="max-height:420px"><table class="grid"><thead><tr><th>Quando</th><th>Quem</th><th>O quê</th><th>Ação</th><th>Versão anterior</th><th></th></tr></thead><tbody>${H.map(h=>`<tr><td class="num">${new Date(h.alterado_em).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})}</td><td class="small">${esc(h.alterado_por||"")}</td><td class="wrap">${esc(histRotulo(h))}</td><td>${h.acao==="delete"?'<span class="st bad">excluído</span>':'<span class="st neutral">alterado</span>'}</td><td class="wrap small">${esc(histResumo(h))}</td><td>${delBtn("hist:"+h.hid,"Restaurar","sm")}</td></tr>`).join("")||'<tr><td colspan="6" class="muted">Nenhuma alteração ainda.</td></tr>'}</tbody></table></div><div class="fbar"><button class="btn sm" data-act="histLoad">Atualizar</button></div>`:'<button class="btn" data-act="histLoad">Carregar alterações</button>'}</fieldset>`;
+}
+function vConexao(){
+  if(store.kind==="db")return"";const c=SBC.conf();
+  return`<fieldset class="box"><legend>Banco da equipe (Supabase)</legend>${store.kind==="sb"?`<p class="small">Conectado a <b>${esc(c.url)}</b>.</p>${window.MESA_SB&&window.MESA_SB.url?"":`<button class="btn sm" data-act="sbDesconectar">Desconectar este navegador</button>`}`:`<p class="hint">Para ter login, senha e os dados guardados para a equipe toda, conecte o banco do Supabase. Cole o endereço (Project URL) e a chave pública (anon key) do projeto.</p>
+   <div class="form"><label class="fl">Project URL<input class="inp" id="sb_url" placeholder="https://xxxx.supabase.co"></label><label class="fl">anon key<input class="inp mono" id="sb_key" placeholder="eyJ..."></label><button class="btn pri" data-act="sbConectar">Conectar</button></div>`}</fieldset>`;
+}
+
 /* ---------- render ---------- */
 function render(){
   $$(".tab").forEach(t=>{if(t.dataset.v===S.view)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
-  $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="local"?"Salvo só neste navegador":"Conectando…";
+  $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"?"Aguardando acesso":"Conectando…";
+  const ub=$("#userBox");if(ub)ub.innerHTML=S.mode==="sb"&&SBC.user?`${esc(SBC.eu&&SBC.eu.nome||SBC.user.email)} · <button class="lk" data-act="trocarSenha">alterar senha</button> · <button class="lk" data-act="sair">sair</button>`:"";
+  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso";
+  if(S.mode==="login"||S.mode==="semacesso"){$("#main").innerHTML=vLogin();const f=$("#main input:not([type=hidden])");if(f&&!$("#main").contains(document.activeElement))f.focus();return}
   const u=ultimo();$("#basePos").textContent=u?"Base de "+fd(u)+(S.cfg.regional?" · Regional "+S.cfg.regional:""):"Nenhuma base";
   if(S.mode==="loading"){$("#main").innerHTML='<div class="loading">Carregando…</div>';return}
   const ae=document.activeElement;if(ae&&$("#main").contains(ae)&&(ae.dataset.par!=null||ae.id==="q_texto"||ae.id==="busca"||ae.id==="atuQ"||ae.id==="aQ")&&render.skip){render.skip=false;return}
@@ -1263,6 +1429,9 @@ function vAjustes(){
      <p class="hint">Mudanças valem a partir da próxima importação. As posições já registradas ficam como foram calculadas, igual ao REGISTRO DIÁRIO.</p></fieldset>
    </div>
    <div>
+    ${vEquipeHist()}${vConexao()}
+    <fieldset class="box"><legend>Backup</legend><p class="hint">Um arquivo com tudo: anotações, chamados, posições, parâmetros e as bases título a título. Serve para guardar uma cópia ou levar os dados para outro lugar (por exemplo, da versão do Claude para o banco da equipe).</p>
+     <div class="fbar"><button class="btn" data-act="backupBaixar">Baixar backup (.json)</button><label class="btn">Restaurar backup<input type="file" id="bkFile" accept=".json,application/json" hidden></label></div></fieldset>
     <fieldset class="box"><legend>Tabelas de referência</legend><table class="grid"><tbody>
      <tr><td>Risco Pricing</td><td class="r num">${Object.keys(S.risco).length} códigos</td></tr><tr><td>Grupos econômicos</td><td class="r num">${Object.keys(S.grupos).length} códigos</td></tr>
      <tr><td>Limite da tranche</td><td class="r num">${Object.keys(S.lim).length} cedentes</td></tr><tr><td>Característica</td><td class="r num">${Object.keys(S.car).length} cedentes</td></tr><tr><td>Anotações</td><td class="r num">${Object.keys(S.anot).length} cedentes</td></tr></tbody></table>
@@ -1377,7 +1546,7 @@ function openTit(cod,kind,f){
   const d=ultimo();const b=needBase(d,()=>openTit(cod,kind,f));
   const titulo=`${nomeB(nomeCed(cod))} · ${FTIT[f]||f}`;
   if(b===undefined){drawer(titulo,'<p class="hint">Carregando os títulos…</p>',"",true);return}
-  if(!b||!b[kind]){drawer(titulo,`<p class="warn-box">A base título a título de ${fd(d)} não está salva${store.kind!=="db"?" neste modo (abra pelo Claude)":""}. Importe a base de novo para ver os títulos.</p>`,"",true);return}
+  if(!b||!b[kind]){drawer(titulo,`<p class="warn-box">A base título a título de ${fd(d)} não está salva. Importe a base de novo para ver os títulos.</p>`,"",true);return}
   if(f==="ment"||f==="mconf"){const pv=anterior(d);const bp=needBase(pv,()=>openTit(cod,kind,f));if(bp===undefined){drawer(titulo,'<p class="hint">Carregando…</p>',"",true);return}
     if(!bp||!bp[kind]){drawer(titulo,'<p class="warn-box">A base anterior não está salva título a título.</p>',"",true);return}
     const mv=Core.movimento(b[kind],bp[kind],S.cfg,null,true);const it=mv.L.filter(x=>x.t===(f==="ment"?"ent":"conf")&&b[kind].rows[x.i][1]==cod).map(x=>({r:b[kind].rows[x.i],bb:b[kind],antes:x.de!=null?"(estava sem confirmação)":""}));return mostrarTit(titulo,it,fd(d))}
@@ -1406,7 +1575,7 @@ function openCh(id,cod,mot,ret){
   const motivos=[...new Set(["DIFICULDADE NO CONTATO","ATRASO DA MERCADORIA","FALTA DE DOCUMENTOS","C99","Não atende","Nada consta","Sem confirmação","Abaixo da meta","Tranche / limite","Outro",...Object.values(S.chamados).map(x=>x.motivo).filter(Boolean)])];
   drawer(id?"Chamado "+(c.numero||""):"Novo chamado",`<div class="form">
    ${ret?`<div class="ok-box small"><b>Motivo sugerido:</b> ${esc(ret)} <button class="lk" data-act="copyTxt" data-t="${esc(ret)}">copiar</button></div>`:""}
-   <div class="fgrid"><label class="fl">Nº do chamado<input class="inp num" id="h_num" value="${esc(c.numero||"")}" placeholder="1026-003495"></label><label class="fl">Cód. cedente<input class="inp num" id="h_cod" list="h_ceds" value="${esc(c.cod||"")}"><datalist id="h_ceds">${ceds.map(([k,n])=>`<option value="${k}">${esc(nomeB(n))}</option>`).join("")}</datalist></label></div>
+   <div class="fgrid"><label class="fl">Nº do chamado<input class="inp num" id="h_num" value="${esc(c.numero||"")}" placeholder="MMAA-000000"></label><label class="fl">Cód. cedente<input class="inp num" id="h_cod" list="h_ceds" value="${esc(c.cod||"")}"><datalist id="h_ceds">${ceds.map(([k,n])=>`<option value="${k}">${esc(nomeB(n))}</option>`).join("")}</datalist></label></div>
    <label class="fl">Motivo<input class="inp" id="h_mot" list="h_mots" value="${esc(c.motivo||"")}"><datalist id="h_mots">${motivos.map(m=>`<option value="${esc(m)}">`).join("")}</datalist></label>
    <div class="fgrid"><label class="fl">Abertura<input class="inp" type="date" id="h_ab" value="${esc(c.abertura||"")}"></label><label class="fl">Resposta<input class="inp" type="date" id="h_resp" value="${esc(c.resposta||"")}"></label><label class="fl">Fechamento<input class="inp" type="date" id="h_fech" value="${esc(c.fechamento||"")}"></label></div>
    <label class="fl">Retorno do comercial<textarea class="inp" id="h_ret" rows="3">${esc(c.retorno||"")}</textarea></label>
@@ -1483,7 +1652,8 @@ async function doImport(){
   const go=$("#i_go");go.disabled=true;go.textContent="Registrando…";
   try{
     if(D.wbRef&&$("#i_ref")&&$("#i_ref").checked){await importarReferencias(D.wbRef);await drawImport()}
-    const Pp=D.parsed;const temBase=store.kind==="db";
+    const Pp=D.parsed;let temBase=store.remote();
+    if(!temBase)temBase=await idb.put(data,{car:Pp.carB,tra:Pp.traB});
     if(temBase){
       const docs=[];if(Pp.car)docs.push(...baseChunks(data,"car",Pp.carB));if(Pp.tra||(!Pp.tra&&Pp.traB&&!S.regs[data]))docs.push(...baseChunks(data,"tra",Pp.traB));
       const old=await store.baseDocs(data);const keep=new Set(docs.map(d=>d.id));
@@ -1546,6 +1716,17 @@ document.addEventListener("click",async e=>{
   if(a!=="arm"&&S.armed){S.armed=null;$$(".btn.armed").forEach(b=>{b.classList.remove("armed");b.textContent=b.dataset.label||b.textContent})}
   switch(a){
     case"go":location.hash=el.dataset.v;break;
+    case"authTab":S.auth={tab:el.dataset.v,email:(S.auth||{}).email||""};render();break;
+    case"authReenviar":authReenviar();break;
+    case"authRetry":if(SBC.user)sbEntrar(SBC.user);break;
+    case"sair":if(SBC.cli)await SBC.cli.auth.signOut();S.auth={tab:"entrar"};S.mode="login";render();break;
+    case"trocarSenha":openTrocarSenha();break;
+    case"mbAdd":membroAdd();break;
+    case"histLoad":histCarregar();break;
+    case"backupBaixar":backupBaixar().catch(err=>toast(err.message));break;
+    case"backupAplicar":backupAplicar();break;
+    case"sbConectar":{const url=vIn("sb_url").trim().replace(/\/+$/,""),key=vIn("sb_key").trim();if(!/^https:\/\/.+/.test(url)||key.length<20){toast("Confira o endereço e a chave.");break}try{localStorage.setItem("mesa_sb",JSON.stringify({url,key}))}catch(e){}location.reload();break}
+    case"sbDesconectar":try{localStorage.removeItem("mesa_sb")}catch(e){}if(SBC.cli)await SBC.cli.auth.signOut().catch(()=>{});location.reload();break;
     case"ced":openCed(id);break;
     case"tit":openTit(el.dataset.cod,el.dataset.kind,el.dataset.f);break;
     case"relTit":openRelTit(el.dataset.f,el.dataset.cod);break;
@@ -1590,12 +1771,15 @@ document.addEventListener("click",async e=>{
     case"close":closeDrawer();break;
     case"arm":{const key=el.dataset.key;if(S.armed!==key){S.armed=key;el.dataset.label=el.textContent;el.classList.add("armed");el.textContent="Confirmar exclusão";break}
       S.armed=null;const i=key.indexOf(":"),k=key.slice(0,i),v=key.slice(i+1);
-      if(k==="reg"){if(store.kind==="db"){const docs=await store.baseDocs(v);for(const d of docs)await store.del("base",d.id)}S.bases.delete(v);await safe(store.del("reg",v),"Posição excluída");if(S.dia===v)S.dia=null;if(S.relDia===v)S.relDia=null;render()}
+      if(k==="reg"){if(store.remote()){const docs=await store.baseDocs(v);for(const d of docs)await store.del("base",d.id)}else await idb.del(v);S.bases.delete(v);await safe(store.del("reg",v),"Posição excluída");if(S.dia===v)S.dia=null;if(S.relDia===v)S.relDia=null;render()}
       else if(k==="ch"){closeDrawer();await safe(store.del("chamados",v),"Chamado excluído")}
       else if(k==="qprof")await safe(store.del("qprof",v),"Excluído");
+      else if(k==="mb")await membroDel(v);
+      else if(k==="hist")await histRestaurar(v);
       break}
   }
 });
+document.addEventListener("submit",e=>{const f=e.target;if(!f||!f.id)return;e.preventDefault();if(f.id==="fTroca")trocarSenha();else authSubmit(f.id)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&D)closeDrawer()});
 document.addEventListener("input",e=>{
   const t=e.target;
@@ -1610,6 +1794,8 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",async e=>{
   const t=e.target;
   if(t.dataset.ea&&S.ea){S.ea[t.dataset.ea]=t.value;return}
+  if(t.dataset.mbadm){membroAdmin(t.dataset.mbadm,t.checked);return}
+  if(t.id==="bkFile"&&t.files[0]){backupLer(t.files[0]);t.value="";return}
   if(t.dataset.fk){setDone(t.dataset.fk,t.dataset.fid,t.checked);return}
   if(t.id==="selDia"){S.dia=t.value;S.cmp=anterior(S.dia);render()}
   if(t.id==="selCmp"){S.cmp=t.value||"";render()}
