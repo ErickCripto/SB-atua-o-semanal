@@ -2046,19 +2046,43 @@ function vQprof(){
   return`<div class="ptitle">Base para chamados · pendência de notas<span class="right">${Q?'<button class="btn" data-act="qLimpar">Nova pendência</button>':""}</span></div>
   ${Q?"":`<fieldset class="box"><legend>Base de notas</legend><p>Suba a base de notas do cedente. O site monta a planilha de pendências no seu modelo e o texto no padrão SB Crédito: abertura com o total, valores por motivo com % e sacados, e os pedidos na mesma ordem.</p>
    <div class="fbar"><label class="btn pri">Escolher arquivo da base<input type="file" id="q_file" accept=".xlsx,.xls,.csv" hidden></label>${S.raw&&S.raw.cart?`<span class="muted">ou use a base importada hoje:</span><select class="inp" id="q_ced"><option value="">escolher cedente…</option>${Object.values(Engine.agregar(S.raw.cart.hdr,S.raw.cart.rows,refObj(),false)).sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option value="${c.cod}">${esc(nomeB(c.nome))} (${c.tit})</option>`).join("")}</select>`:""}</div>
-   <p class="hint">A base precisa ter as colunas Vlr. Aberto e Motivo Entrega (ou Status Checagem).</p></fieldset>`}
+   <p class="hint">A base precisa ter as colunas Vlr. Aberto e Motivo Entrega (ou Status Checagem).</p></fieldset>${qTodos()}`}
   ${corpo}
   ${hist.length?`<fieldset class="box"><legend>Pendências salvas (${hist.length})</legend>${hist.map(h=>`<details class="hrow"><summary><b>${esc(nomeB(h.cedente||"—"))}</b> <span class="muted">${fd(h.data)} · ${mk(h.total)}</span></summary><pre class="pre">${esc(h.texto)}</pre><div class="fbar"><button class="btn sm" data-act="qCopyH" data-id="${h.id}">Copiar</button>${delBtn("qprof:"+h.id,"Excluir","sm")}</div></details>`).join("")}</fieldset>`:""}`;
 }
+/* textos de pendência de todas as carteiras da visão, a partir da última base registrada */
+const Q_HDR=["Seu Número","Rótulo","Cod. Sacado","Sacado","Fone","Motivo Entrega","Vlr. Aberto","Emissão NFe","Venc. Orig.","Aditivo","Cedente","Cod. Cedente"];
+function qLinhasBase(b,cod){const nm=(b.ced||{})[cod]||nomeCed(cod);const iso=n=>n?Core.serialISO(n):"";
+  return b.rows.filter(r=>String(r[1])===String(cod)).map(r=>[r[7]||"",(b.rot||[])[r[8]]||"",r[19]||"",(b.sac||[])[r[4]]||"",r[21]||"",(b.mot||[])[r[3]]||"",r[2],iso(r[10]),iso(r[20]),r[5]||"",nm,String(cod)])}
+function qLote(grupos,dISO){const out=[];for(const g of grupos){try{const A=Qprof.analisar(g.hdr,g.rows,toD(dISO));const T=Qprof.texto(A,{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"temos",compl:{},incluirOk:true,prefat:false,c99pag:false});
+    out.push({cod:g.cod,nome:nomeB(g.nome||A.cedNome||g.cod),total:A.total,conf:A.confirmacao,n:A.itens.length,texto:T.texto,A,hdr:g.hdr,rows:g.rows,c99:A.grupos.filter(x=>/^C99/i.test(x.motivo)).reduce((a,x)=>a+x.valor,0)})}catch(e){}}
+  return out.sort((x,y)=>x.nome.localeCompare(y.nome,"pt-BR"))}
+function qLoteHtml(L,titulo,dISO,fonte){return`<fieldset class="box"><legend>Todas as carteiras ${titulo} (${L.length} cedentes)</legend>
+   <p class="hint">Texto de pendência no padrão SB Crédito e planilha de pendências no seu modelo, de cada cedente. Clique no cedente para ver o texto; “Abrir para ajustar” leva para a montagem completa (categorias e complementos).</p>
+   <div class="fbar" style="margin-bottom:6px"><button class="btn" data-act="qCopyTodos" data-f="${fonte}">Copiar todos os textos</button><button class="btn pri" data-act="qXlsxTodos" data-f="${fonte}">Baixar planilhas de todas (arquivo .zip)</button>${fonte==="arq"?'<button class="btn" data-act="qLoteFechar">Fechar</button>':""}</div>
+   ${L.map((x,i)=>`<details class="hrow"><summary><b>${esc(x.nome)}</b> <span class="muted">${nrmN(x.cod)!==nrmN(x.nome)?esc(x.cod)+" · ":""}${x.n} notas · ${money(x.total)}${x.A.tranche?" · tranche":" · confirmação "+pc(x.conf)}${x.c99?` · <span class="bad-t">C99 ${money(x.c99)}</span>`:""}</span></summary>
+     <textarea class="inp mono" rows="12" readonly>${esc(x.texto)}</textarea>
+     <div class="fbar"><button class="btn sm pri" data-act="qCopyUm" data-f="${fonte}" data-i="${i}">Copiar texto</button><button class="btn sm pri" data-act="qXlsxUm" data-f="${fonte}" data-i="${i}">Baixar planilha</button><button class="btn sm" data-act="qAbrirUm" data-f="${fonte}" data-i="${i}">Abrir para ajustar</button></div></details>`).join("")}</fieldset>`}
+const qFonte=f=>f==="arq"?S.qLoteArq:S.qTodosC;
+async function qXlsxBytes(x){const X=await XLSXlib();return new Uint8Array(X.write(Qprof.planilha(x.A,X),{bookType:"xlsx",type:"array"}))}
+const qNomeArq=(x,d)=>"Pendencias "+String(x.nome).replace(/[^\wÀ-ú ]+/g,"").trim().slice(0,40)+" "+fds(d).replace("/","-")+".xlsx";
+function qTodos(){if(S.qLoteArq)return qLoteHtml(S.qLoteArq.out,S.qLoteArq.titulo,S.qLoteArq.data,"arq");const d=ultimo();if(!d)return"";const b0=needBase(d);
+  if(b0===undefined)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="hint carregando">Carregando a base de ${fd(d)}…</p></fieldset>`;
+  const b=b0&&b0.car;if(!b)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="muted">A base de ${fd(d)} não tem os títulos salvos. Importe a base do dia de novo.</p></fieldset>`;
+  const key=[d,S.visao,S.visaoPessoa,(S.regs[d]||{}).criadoEm].join("|");
+  if(!S.qTodosC||S.qTodosC.key!==key){const cods=[...new Set(b.rows.map(r=>String(r[1])))].filter(c=>vis(c));
+    S.qTodosC={key,data:d,out:qLote(cods.map(cod=>({cod,nome:(b.ced||{})[cod]||nomeCed(cod),hdr:Q_HDR,rows:qLinhasBase(b,cod)})),d)}}
+  const L=S.qTodosC.out;if(!L.length)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="muted">Nenhum cedente nesta visão.</p></fieldset>`;
+  return qLoteHtml(L,`· base de ${fd(d)}`,d,"base")}
 function qIniciar(hdr,rows,nomeArq){
-  const c=Qprof.colunas(hdr);
-  if(c.codc>=0){const cods=[...new Set(rows.map(r=>r[c.codc]).filter(x=>x!=null&&x!==""))];
-    if(cods.length>1){S.Qpick={hdr,rows,nomeArq,cods:cods.map(k=>({cod:String(k),nome:String((rows.find(r=>r[c.codc]==k)||[])[c.ced]||k),n:rows.filter(r=>r[c.codc]==k).length}))};openQpick();return}}
+  const c=Qprof.colunas(hdr);const kc=c.codc>=0?c.codc:c.ced;
+  if(kc>=0){const cods=[...new Set(rows.map(r=>String(r[kc]==null?"":r[kc]).trim()).filter(Boolean))];
+    if(cods.length>1){S.Qpick={hdr,rows,nomeArq,kc,cods:cods.map(k=>{const rr=rows.filter(r=>String(r[kc]==null?"":r[kc]).trim()===k);return{cod:k,nome:String((rr[0]||[])[c.ced]||k),n:rr.length}})};openQpick();return}}
   const data=S.Q&&S.Q.data||today();
   try{const A=Qprof.analisar(hdr,rows,toD(data));S.Q={A,hdr,rows,data,opt:{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"temos",compl:{},incluirOk:true,prefat:false,c99pag:false},texto:"",editado:false};S.view="qprof";location.hash="qprof";render()}
   catch(e){toast(e.message)}
 }
-function openQpick(){const P=S.Qpick;drawer("Qual cedente?",`<p class="muted">A base tem ${P.cods.length} cedentes. Escolha um para montar a pendência.</p><div class="pick">${P.cods.sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<button class="pick-i" data-act="qPick" data-id="${esc(c.cod)}"><b>${esc(nomeB(c.nome))}</b><span class="muted">${c.cod} · ${c.n} notas</span></button>`).join("")}</div>`,`<button class="btn" data-act="close">Cancelar</button>`)}
+function openQpick(){const P=S.Qpick;drawer("Qual cedente?",`<p class="muted">A base tem ${P.cods.length} cedentes. Monte de todas as carteiras de uma vez ou escolha uma.</p><button class="btn pri" data-act="qPickTodos" style="width:100%;margin-bottom:10px">Todas as ${P.cods.length} carteiras do arquivo (texto e planilha de cada uma)</button><div class="pick">${P.cods.sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<button class="pick-i" data-act="qPick" data-id="${esc(c.cod)}"><b>${esc(nomeB(c.nome))}</b><span class="muted">${c.cod} · ${c.n} notas</span></button>`).join("")}</div>`,`<button class="btn" data-act="close">Cancelar</button>`)}
 
 /* ---------- AJUSTES ---------- */
 function vAjustes(){
@@ -2488,9 +2512,20 @@ document.addEventListener("click",async e=>{
     case"expReg":expReg().catch(err=>toast(err.message));break;
     case"expAnot":expAnot().catch(err=>toast(err.message));break;
     case"qCopy":copiar($("#q_texto").value,"Texto copiado");break;
+    case"qCopyUm":{const F=qFonte(el.dataset.f);const x=F&&F.out[+el.dataset.i];if(x)copiar(x.texto,"Texto copiado");break}
+    case"qCopyTodos":{const F=qFonte(el.dataset.f);if(F)copiar(F.out.map(x=>x.nome.toUpperCase()+"\n\n"+x.texto).join("\n\n────────────\n\n"),"Textos copiados");break}
+    case"qXlsxUm":{const F=qFonte(el.dataset.f);const x=F&&F.out[+el.dataset.i];if(x){try{await baixar(qNomeArq(x,F.data),await qXlsxBytes(x),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}catch(err){toast(err.message||String(err))}}break}
+    case"qXlsxTodos":{const F=qFonte(el.dataset.f);if(!F)break;el.disabled=true;const t0=el.textContent;try{const X=await XLSXlib();const C=X.CFB,z=C.utils.cfb_new({fileType:"zip"});const usados=new Set();
+      for(let k=0;k<F.out.length;k++){el.textContent=`Montando ${k+1} de ${F.out.length}…`;await pausa();const x=F.out[k];let nm=qNomeArq(x,F.data);while(usados.has(nm))nm=nm.replace(/\.xlsx$/," ("+x.cod+").xlsx");usados.add(nm);C.utils.cfb_add(z,nm,await qXlsxBytes(x))}
+      const zip=C.write(z,{fileType:"zip",type:"array",compression:true});await baixar("Pendencias todas as carteiras "+fds(F.data).replace("/","-")+".zip",zip instanceof Uint8Array?zip:new Uint8Array(zip),"application/zip")}catch(err){toast(err.message||String(err))}el.disabled=false;el.textContent=t0;break}
+    case"qAbrirUm":{const F=qFonte(el.dataset.f);const x=F&&F.out[+el.dataset.i];if(x){S.Q=null;const d=F.data;try{const A=Qprof.analisar(x.hdr,x.rows,toD(d));S.Q={A,hdr:x.hdr,rows:x.rows,data:d,opt:{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"temos",compl:{},incluirOk:true,prefat:false,c99pag:false},texto:"",editado:false};render();window.scrollTo(0,0)}catch(err){toast(err.message)}}break}
+    case"qLoteFechar":S.qLoteArq=null;render();break;
+    case"qAbrirCed":{const d=ultimo();const b=await loadBase(d);if(b&&b.car)qIniciar(Q_HDR,qLinhasBase(b.car,id),"base de "+fd(d));break}
     case"qReset":S.Q.editado=false;render();break;
     case"qLimpar":S.Q=null;render();break;
-    case"qPick":{const P=S.Qpick;const c=Qprof.colunas(P.hdr);const rows=P.rows.filter(r=>String(r[c.codc])===id);closeDrawer();S.Qpick=null;qIniciar(P.hdr,rows,P.nomeArq);break}
+    case"qPickTodos":{const P=S.Qpick;closeDrawer();S.Qpick=null;const d=S.Q&&S.Q.data||today();
+      S.qLoteArq={key:"arq"+Date.now(),titulo:`do arquivo “${P.nomeArq||"base"}”`,data:d,out:qLote(P.cods.map(x=>({cod:x.cod,nome:x.nome,hdr:P.hdr,rows:P.rows.filter(r=>String(r[P.kc]==null?"":r[P.kc]).trim()===x.cod)})),d)};S.view="qprof";location.hash="qprof";render();window.scrollTo(0,0);break}
+    case"qPick":{const P=S.Qpick;const rows=P.rows.filter(r=>String(r[P.kc]==null?"":r[P.kc]).trim()===id);closeDrawer();S.Qpick=null;qIniciar(P.hdr,rows,P.nomeArq);break}
     case"qFromCed":{const b=S.raw.cart;const cc=Engine.mapCols(b.hdr);closeDrawer();qIniciar(b.hdr,b.rows.filter(r=>String(r[cc.cod])===id),"base do dia");break}
     case"qXlsx":{try{const X=await XLSXlib();const wb=Qprof.planilha(S.Q.A,X);const nm=nomeB(S.Q.A.cedNome||S.Q.A.cedente||"pendencias").replace(/[^\wÀ-ú ]+/g,"").trim().slice(0,40);await salvarArquivo(wb,"Pendencias "+nm+" "+fds(S.Q.data).replace("/","-")+".xlsx")}catch(err){toast(err.message)}break}
     case"qSalvar":{const A=S.Q.A;await safe(store.add("qprof",{cedente:A.cedNome||A.cedente||"",data:S.Q.data,total:A.total,texto:$("#q_texto").value,criadoEm:Date.now()}),"Pendência salva no histórico");break}
