@@ -937,10 +937,13 @@ const Qprof=(function(){
     const porCat={};
     A.grupos.forEach(g=>{const k=g.opdia?"opdia":(opt.cat[g.rotulo]||sugerir(g.motivo));if(k==="ignorar")return;
       const o=porCat[k]||(porCat[k]={k,valor:0,itens:[],motivos:[]});o.valor+=g.valor;o.itens.push(...g.itens);o.motivos.push(g.motivo||g.rotulo)});
-    const lista=ORDEM.filter(k=>porCat[k]&&porCat[k].valor>0&&(k!=="ok"||opt.incluirOk));
-    const total=lista.reduce((a,k)=>a+porCat[k].valor,0);
+    const lista=ORDEM.filter(k=>porCat[k]&&porCat[k].valor>0&&((k!=="ok"&&k!=="opdia")||opt.incluirOk));
+    lista.sort((a,b)=>porCat[b].valor-porCat[a].valor);/* do maior para o menor valor */
+    const total=lista.reduce((a,k)=>a+porCat[k].valor,0);const risco=opt.incluirOk?total:A.total;
     const tipo=opt.tipo==="tranche"?"nesta tranche":opt.tipo==="modalidade"?"nesta modalidade":"no risco";
-    const head=opt.abertura==="do"?`Do ${opt.tipo==="tranche"?"valor da tranche":opt.tipo==="modalidade"?"valor da modalidade":"risco"} de ${brl(total)}, temos:`:`Temos ${brl(total)} ${tipo}, dos quais:`;
+    const tipoNome=opt.tipo==="tranche"?"valor da tranche":opt.tipo==="modalidade"?"valor da modalidade":"risco";
+    if(!opt.incluirOk&&!lista.length)return{texto:`Sem pendências: todo o ${tipoNome} de ${brl(A.total)} está confirmado ou baixado.`,total:0,lista:[]};
+    const head=!opt.incluirOk?(opt.abertura==="do"?`Do ${tipoNome} de ${brl(A.total)}, temos ${brl(total)} pendentes de confirmação:`:`Temos ${brl(total)} pendentes de confirmação ${tipo}, dos quais:`):opt.abertura==="do"?`Do ${opt.tipo==="tranche"?"valor da tranche":opt.tipo==="modalidade"?"valor da modalidade":"risco"} de ${brl(total)}, temos:`:`Temos ${brl(total)} ${tipo}, dos quais:`;
     const sacs=it=>{const m={};it.forEach(i=>{if(i.sacado)m[i.sacado]=(m[i.sacado]||0)+i.valor});const n=Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([s])=>nomeBonito(s));
       if(!n.length)return"";if(n.length<=3)return n.length===1?n[0]:n.slice(0,-1).join(", ")+" e "+n[n.length-1];return n.slice(0,3).join(", ")+" e mais "+(n.length-3)+" sacados"};
     const linhas=lista.map((k,ix)=>{
@@ -951,7 +954,7 @@ const Qprof=(function(){
       if(k==="outro")d="em "+[...new Set(o.motivos)].map(m=>m.toLowerCase()).join(" / ");
       const cpl=(opt.compl&&opt.compl[k]||"").trim();
       const s=k==="ok"||k==="opdia"?"":sacs(o.itens);
-      return`• ${brl(o.valor)} (${pct(o.valor,total)}) ${d}${cpl?" — "+cpl:""}${s?" ("+s+")":""}${ix===lista.length-1?".":";"}`;
+      return`• ${brl(o.valor)} (${pct(o.valor,risco)}) ${d}${cpl?" — "+cpl:""}${s?" ("+s+")":""}${ix===lista.length-1?".":";"}`;
     });
     const pedidos=lista.filter(k=>CATS[k].pedido||(k==="outro"&&opt.compl&&opt.compl.outroPedido)).map(k=>{
       let p=k==="outro"?opt.compl.outroPedido:CATS[k].pedido;
@@ -2029,9 +2032,9 @@ function vQprof(){
        ${totbar([["Total",money(A.total)],["Notas",A.itens.length]])}</fieldset>
       <fieldset class="box"><legend>Opções do texto</legend><div class="form">
        <div class="fgrid"><label class="fl">Tipo<select class="inp" id="q_tipo"><option value="risco"${o.tipo==="risco"?" selected":""}>Risco</option><option value="tranche"${o.tipo==="tranche"?" selected":""}>Tranche</option><option value="modalidade"${o.tipo==="modalidade"?" selected":""}>Modalidade</option></select></label>
-        <label class="fl">Abertura<select class="inp" id="q_ab"><option value="temos"${o.abertura==="temos"?" selected":""}>“Temos R$ X no risco, dos quais:”</option><option value="do"${o.abertura==="do"?" selected":""}>“Do risco de R$ X, temos:”</option></select></label>
+        <label class="fl">Abertura<select class="inp" id="q_ab"><option value="do"${o.abertura==="do"?" selected":""}>“Do risco de R$ X, temos R$ Y pendentes de confirmação:”</option><option value="temos"${o.abertura==="temos"?" selected":""}>“Temos R$ Y pendentes de confirmação no risco, dos quais:”</option></select></label>
         <label class="fl">Data de referência<input class="inp" type="date" id="q_data" value="${Q.data}"></label></div>
-       <label class="ck"><input type="checkbox" id="q_ok"${o.incluirOk?" checked":""}> Incluir o valor já confirmado (para os itens somarem o risco todo)</label>
+       <label class="ck"><input type="checkbox" id="q_ok"${o.incluirOk?" checked":""}> Incluir também o que já está confirmado/baixado (por padrão o texto traz só o que está pendente)</label>
        <label class="ck"><input type="checkbox" id="q_pref"${o.prefat?" checked":""}> Perguntar sobre pré-faturamento na mercadoria não entregue</label>
        <label class="ck"><input type="checkbox" id="q_c99"${o.c99pag?" checked":""}> No C99, pedir confirmação do pagamento em vez da recompra</label>
        ${T.lista.filter(x=>!["ok","opdia"].includes(x.k)).map(x=>`<label class="fl">Complemento — ${Qprof.CATS[x.k].nome}<input class="inp" id="qc_${x.k}" data-qcompl="${x.k}" value="${esc(o.compl[x.k]||"")}" placeholder="opcional"></label>`).join("")}
@@ -2054,7 +2057,7 @@ function vQprof(){
 const Q_HDR=["Seu Número","Rótulo","Cod. Sacado","Sacado","Fone","Motivo Entrega","Vlr. Aberto","Emissão NFe","Venc. Orig.","Aditivo","Cedente","Cod. Cedente"];
 function qLinhasBase(b,cod){const nm=(b.ced||{})[cod]||nomeCed(cod);const iso=n=>n?Core.serialISO(n):"";
   return b.rows.filter(r=>String(r[1])===String(cod)).map(r=>[r[7]||"",(b.rot||[])[r[8]]||"",r[19]||"",(b.sac||[])[r[4]]||"",r[21]||"",(b.mot||[])[r[3]]||"",r[2],iso(r[10]),iso(r[20]),r[5]||"",nm,String(cod)])}
-function qLote(grupos,dISO){const out=[];for(const g of grupos){try{const A=Qprof.analisar(g.hdr,g.rows,toD(dISO));const T=Qprof.texto(A,{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"temos",compl:{},incluirOk:true,prefat:false,c99pag:false});
+function qLote(grupos,dISO){const out=[];for(const g of grupos){try{const A=Qprof.analisar(g.hdr,g.rows,toD(dISO));const T=Qprof.texto(A,{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"do",compl:{},incluirOk:false,prefat:false,c99pag:false});
     out.push({cod:g.cod,nome:nomeB(g.nome||A.cedNome||g.cod),total:A.total,conf:A.confirmacao,n:A.itens.length,texto:T.texto,A,hdr:g.hdr,rows:g.rows,c99:A.grupos.filter(x=>/^C99/i.test(x.motivo)).reduce((a,x)=>a+x.valor,0)})}catch(e){}}
   return out.sort((x,y)=>x.nome.localeCompare(y.nome,"pt-BR"))}
 function qLoteHtml(L,titulo,dISO,fonte){return`<fieldset class="box"><legend>Todas as carteiras ${titulo} (${L.length} cedentes)</legend>
@@ -2079,7 +2082,7 @@ function qIniciar(hdr,rows,nomeArq){
   if(kc>=0){const cods=[...new Set(rows.map(r=>String(r[kc]==null?"":r[kc]).trim()).filter(Boolean))];
     if(cods.length>1){S.Qpick={hdr,rows,nomeArq,kc,cods:cods.map(k=>{const rr=rows.filter(r=>String(r[kc]==null?"":r[kc]).trim()===k);return{cod:k,nome:String((rr[0]||[])[c.ced]||k),n:rr.length}})};openQpick();return}}
   const data=S.Q&&S.Q.data||today();
-  try{const A=Qprof.analisar(hdr,rows,toD(data));S.Q={A,hdr,rows,data,opt:{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"temos",compl:{},incluirOk:true,prefat:false,c99pag:false},texto:"",editado:false};S.view="qprof";location.hash="qprof";render()}
+  try{const A=Qprof.analisar(hdr,rows,toD(data));S.Q={A,hdr,rows,data,opt:{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"do",compl:{},incluirOk:false,prefat:false,c99pag:false},texto:"",editado:false};S.view="qprof";location.hash="qprof";render()}
   catch(e){toast(e.message)}
 }
 function openQpick(){const P=S.Qpick;drawer("Qual cedente?",`<p class="muted">A base tem ${P.cods.length} cedentes. Monte de todas as carteiras de uma vez ou escolha uma.</p><button class="btn pri" data-act="qPickTodos" style="width:100%;margin-bottom:10px">Todas as ${P.cods.length} carteiras do arquivo (texto e planilha de cada uma)</button><div class="pick">${P.cods.sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<button class="pick-i" data-act="qPick" data-id="${esc(c.cod)}"><b>${esc(nomeB(c.nome))}</b><span class="muted">${c.cod} · ${c.n} notas</span></button>`).join("")}</div>`,`<button class="btn" data-act="close">Cancelar</button>`)}
@@ -2518,7 +2521,7 @@ document.addEventListener("click",async e=>{
     case"qXlsxTodos":{const F=qFonte(el.dataset.f);if(!F)break;el.disabled=true;const t0=el.textContent;try{const X=await XLSXlib();const C=X.CFB,z=C.utils.cfb_new({fileType:"zip"});const usados=new Set();
       for(let k=0;k<F.out.length;k++){el.textContent=`Montando ${k+1} de ${F.out.length}…`;await pausa();const x=F.out[k];let nm=qNomeArq(x,F.data);while(usados.has(nm))nm=nm.replace(/\.xlsx$/," ("+x.cod+").xlsx");usados.add(nm);C.utils.cfb_add(z,nm,await qXlsxBytes(x))}
       const zip=C.write(z,{fileType:"zip",type:"array",compression:true});await baixar("Pendencias todas as carteiras "+fds(F.data).replace("/","-")+".zip",zip instanceof Uint8Array?zip:new Uint8Array(zip),"application/zip")}catch(err){toast(err.message||String(err))}el.disabled=false;el.textContent=t0;break}
-    case"qAbrirUm":{const F=qFonte(el.dataset.f);const x=F&&F.out[+el.dataset.i];if(x){S.Q=null;const d=F.data;try{const A=Qprof.analisar(x.hdr,x.rows,toD(d));S.Q={A,hdr:x.hdr,rows:x.rows,data:d,opt:{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"temos",compl:{},incluirOk:true,prefat:false,c99pag:false},texto:"",editado:false};render();window.scrollTo(0,0)}catch(err){toast(err.message)}}break}
+    case"qAbrirUm":{const F=qFonte(el.dataset.f);const x=F&&F.out[+el.dataset.i];if(x){S.Q=null;const d=F.data;try{const A=Qprof.analisar(x.hdr,x.rows,toD(d));S.Q={A,hdr:x.hdr,rows:x.rows,data:d,opt:{cat:{},tipo:A.tranche?"tranche":"risco",abertura:"do",compl:{},incluirOk:false,prefat:false,c99pag:false},texto:"",editado:false};render();window.scrollTo(0,0)}catch(err){toast(err.message)}}break}
     case"qLoteFechar":S.qLoteArq=null;render();break;
     case"qAbrirCed":{const d=ultimo();const b=await loadBase(d);if(b&&b.car)qIniciar(Q_HDR,qLinhasBase(b.car,id),"base de "+fd(d));break}
     case"qReset":S.Q.editado=false;render();break;
