@@ -385,50 +385,46 @@ const SinteseXlsx=(()=>{
   const colN=c=>{let n=0;for(const ch of c)n=n*26+ch.charCodeAt(0)-64;return n};
   const cmp=(a,b)=>String(a).localeCompare(String(b),"pt-BR",{numeric:true});
   const nk=s=>String(s==null?"":s).normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim().toUpperCase();
-  const FIELDS=["Cedente","Rótulo","Motivo Entrega","Vlr. Aberto","PRICING","REGIONAL2","RATING AGRO","RATING","DIFICULDADE DE CHECAGEM"];
-  const ROWF=[5,8,4,7,6,1,2],AST=[13,17,20,22,24,25,27];
+  const AST=[13,17,20,22,24,25,27];
   /* T: títulos já classificados [{cod,rot,mot,v,c}], ref(cod) -> {regional,dificuldade,pricing,rating,ragro}, nome(cod) */
-  function gerar(X,T,ref,nome,codIni,desempenho,motConf){
-    // ---- valores dos campos
-    const nomes=new Map();const cods=[...new Set(T.map(t=>t.cod))];
-    const porNome=new Map();cods.forEach(c=>{const n=String(nome(c)||c).trim();porNome.set(n,(porNome.get(n)||0)+1)});
-    cods.forEach(c=>{const n=String(nome(c)||c).trim();nomes.set(c,porNome.get(n)>1?`${n} (${c})`:n)});
-    const vals=FIELDS.map(()=>new Map());const add=(f,v)=>{v=String(v);if(!vals[f].has(v))vals[f].set(v,vals[f].size);return vals[f].get(v)};
-    const agg=new Map();let vmin=Infinity,vmax=-Infinity;
-    for(const t of T){const r=ref(t.cod);const k=[add(0,nomes.get(t.cod)),add(1,t.rot||"(vazio)"),add(2,t.mot||"(vazio)"),-1,add(4,r.pricing||"#N/A"),add(5,r.regional||"#N/A"),add(6,r.ragro||"NÃO É AGRO"),add(7,r.rating||"SEM RATING AGRO"),add(8,r.dificuldade||"#N/A")];
-      const key=k.join(",");agg.set(key,(agg.get(key)||0)+t.v)}
-    const recs=[...agg.entries()].map(([k,v])=>{const a=k.split(",").map(Number);a[3]=Math.round(v*100)/100;if(a[3]<vmin)vmin=a[3];if(a[3]>vmax)vmax=a[3];return a});
+  const colL=i=>{let s="";i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+  const serIso=n=>{const d=new Date(Date.UTC(1899,11,30)+Math.floor(n)*864e5);return d.toISOString().slice(0,10)+"T00:00:00"};
+  /* D={cols:[{nome,tipo:'x'|'n'|'s'|'d'}], linhas:[[...]], ix:{ced,rot,mot,val,pri,reg,rag,rat,dif}}; cedIni = nome do cedente que abre selecionado */
+  function gerar(X,D,cedIni,desempenho,motConf){
+    const C0=D.cols,IX=D.ix,NF=C0.length;const ROWF=[IX.reg,IX.dif,IX.pri,IX.rat,IX.rag,IX.rot,IX.mot];
+    const vals=C0.map(()=>new Map());const add=(f,v)=>{v=String(v==null||v===""?"(vazio)":v);if(!vals[f].has(v))vals[f].set(v,vals[f].size);return vals[f].get(v)};
+    const rng=C0.map(()=>({min:Infinity,max:-Infinity,blank:false}));
+    const recs=D.linhas.map(l=>C0.map((c,i)=>{const x=l[i];if(c.tipo==="x")return add(i,x);if(x==null||x===""){rng[i].blank=true;return null}
+      if(c.tipo==="n"||c.tipo==="d"){const nv=+x;if(nv<rng[i].min)rng[i].min=nv;if(nv>rng[i].max)rng[i].max=nv;return nv}return String(x)}));
     const shared=vals.map(m=>[...m.keys()]);
-    // ordem dos itens em cada campo (alfabética), posição -> índice compartilhado
     const ordem=shared.map(arr=>arr.map((v,i)=>i).sort((a,b)=>cmp(arr[a],arr[b])));
     const pos=ordem.map(o=>{const p=[];o.forEach((si,pi)=>p[si]=pi);return p});
-    // ---- árvore de cada cedente (para o layout inicial e para saber o tamanho máximo)
-    const arvore=ci=>{const root={c:new Map(),v:0};for(const a of recs){if(a[0]!==ci)continue;root.v+=a[3];let n=root;for(const f of ROWF){const k=a[f];let m=n.c.get(k);if(!m){m={c:new Map(),v:0};n.c.set(k,m)}m.v+=a[3];n=m}}return root};
-    const linhasDe=(root)=>{const L=[];const walk=(n,d)=>{let ks=[...n.c.keys()];const f=ROWF[d];if(f===2)ks.sort((a,b)=>n.c.get(b).v-n.c.get(a).v);else ks.sort((a,b)=>pos[f][a]-pos[f][b]);for(const k of ks){const m=n.c.get(k);L.push({d,f,k,v:m.v});if(d<ROWF.length-1)walk(m,d+1)}};walk(root,0);return L};
-    let maxL=0;const cedIdx=shared[0].map((n,i)=>i);for(const ci of cedIdx){const L=linhasDe(arvore(ci));if(L.length>maxL)maxL=L.length}
-    let ini=nomes.has(String(codIni))?shared[0].indexOf(nomes.get(String(codIni))):-1;if(ini<0)ini=ordem[0][0]||0;
+    const VAL=IX.val,CED=IX.ced,MOT=IX.mot;
+    const arvore=ci=>{const root={c:new Map(),v:0};for(const a of recs){if(a[CED]!==ci)continue;const v=a[VAL]||0;root.v+=v;let n=root;for(const f of ROWF){const k=a[f];let m=n.c.get(k);if(!m){m={c:new Map(),v:0};n.c.set(k,m)}m.v+=v;n=m}}return root};
+    const linhasDe=(root)=>{const L=[];const walk=(n,d)=>{let ks=[...n.c.keys()];const f=ROWF[d];if(f===MOT)ks.sort((a,b)=>n.c.get(b).v-n.c.get(a).v);else ks.sort((a,b)=>pos[f][a]-pos[f][b]);for(const k of ks){const m=n.c.get(k);L.push({d,f,k,v:m.v});if(d<ROWF.length-1)walk(m,d+1)}};walk(root,0);return L};
+    let maxL=0;for(let ci=0;ci<shared[CED].length;ci++){const L=linhasDe(arvore(ci));if(L.length>maxL)maxL=L.length}
+    let ini=cedIni!=null?shared[CED].indexOf(String(cedIni)):-1;if(ini<0)ini=ordem[CED][0]||0;
     const root=arvore(ini),L=linhasDe(root),TOT=root.v||0;
     // ---- planilha
     const cells=new Map();const rowsH={...SINT_TPL.model.rows};
     const setC=(ref,o)=>cells.set(ref,o);
     for(const[ref,e]of Object.entries(SINT_TPL.model.cells))setC(ref,{...e});
-    setC("A4",{v:"Cedente"});setC("B4",{v:shared[0][ini]});
+    setC("A4",{v:"Cedente"});setC("B4",{v:shared[CED][ini]});
     setC("A6",{s:10,v:"STATUS"});setC("B6",{s:10,v:"RISCO"});setC("C6",{s:11,v:"%"});
     let r=7;for(const l of L){setC("A"+r,{s:AST[l.d],v:shared[l.f][l.k]});setC("B"+r,{s:14,v:l.v,n:1});setC("C"+r,{s:15,v:TOT?l.v/TOT:0,n:1});r++}
     const fimPiv=r;setC("A"+r,{s:34,v:"TOTAL"});setC("B"+r,{s:35,v:TOT,n:1});setC("C"+r,{s:36,v:TOT?1:0,n:1});
     for(let k=r+1;k<=34;k++)["A","B","C"].forEach(c=>cells.delete(c+k));
     // listas usadas nas fórmulas (como no modelo, mais abaixo na planilha)
     const L0=Math.max(101,7+maxL+20),lim=L0-12;
-    const pctMot=new Map();L.filter(l=>l.f===2).forEach(l=>pctMot.set(shared[2][l.k],(pctMot.get(shared[2][l.k])||0)+(TOT?l.v/TOT:0)));
+    const pctMot=new Map();L.filter(l=>l.f===MOT).forEach(l=>pctMot.set(shared[MOT][l.k],(pctMot.get(shared[MOT][l.k])||0)+(TOT?l.v/TOT:0)));
     let q=L0;const lista=(itens,sty)=>{const a=q;for(const m of itens){setC("A"+q,{s:42,v:m});setC("B"+q,{s:40,f:`SUMIF($A$5:$A$${lim},A${q},$C$5:$C$${lim})`,v:pctMot.get(m)||0,n:1});q++}
       const tot=itens.reduce((s,m)=>s+(pctMot.get(m)||0),0);setC("B"+q,{s:45,f:`SUM(B${a}:B${q-1})`,v:tot,n:1});const ref="B"+q;q+=6;return{ref,tot}};
-    const todosMot=[...new Set([...motConf.conf,...shared[2]])];
-    const conf=lista([...new Set([...motConf.conf,...shared[2].filter(m=>motConf.eConf(m))])]);
-    const c99=lista([...new Set([...motConf.c99,...shared[2].filter(m=>/^C99/i.test(m.trim()))])]);
-    const nc=lista([...new Set([...motConf.nc,...shared[2].filter(m=>/^NADA CONSTA/.test(nk(m)))])]);
+    const conf=lista([...new Set([...motConf.conf,...shared[MOT].filter(m=>motConf.eConf(m))])]);
+    const c99=lista([...new Set([...motConf.c99,...shared[MOT].filter(m=>/^C99/i.test(m.trim()))])]);
+    const nc=lista([...new Set([...motConf.nc,...shared[MOT].filter(m=>/^NADA CONSTA/.test(nk(m)))])]);
     const d0=q;setC("A"+q,{s:42,v:"REGIONAL"});setC("B"+q,{s:42,v:"CLASSIFICAÇÃO"});q++;const dsp=String(desempenho||"").split("\n").map(x=>x.split(";")).filter(p=>p[0]&&p[0].trim());
     for(const p of dsp){setC("A"+q,{s:42,v:p[0].trim()});setC("B"+q,{s:42,v:(p[1]||"").trim()});q++}
-    const regIni=L.find(l=>l.d===0);const dVal=regIni?((dsp.find(p=>nk(p[0])===nk(shared[5][regIni.k]))||[])[1]||"").trim():"";
+    const regIni=L.find(l=>l.d===0);const dVal=regIni?((dsp.find(p=>nk(p[0])===nk(shared[IX.reg][regIni.k]))||[])[1]||"").trim():"";
     setC("E5",{s:9,f:conf.ref,v:conf.tot,n:1});setC("E7",{s:16,f:c99.ref,v:c99.tot,n:1});setC("E9",{s:21,f:nc.ref,v:nc.tot,n:1});
     setC("E12",{s:26,f:`IFERROR(VLOOKUP(A7,$A$${d0+1}:$B$${q-1},2,FALSE),"")`,v:dVal||"",str:1});
     const hoje=new Date();setC("E3",{s:5,f:"TODAY()",v:Math.floor((Date.UTC(hoje.getFullYear(),hoje.getMonth(),hoje.getDate())-Date.UTC(1899,11,30))/864e5),n:1,ca:1});
@@ -440,44 +436,51 @@ const SinteseXlsx=(()=>{
       return`<row r="${rn}"${h?` ht="${h.ht}"${h.custom?' customHeight="1"':""}`:""}>${cs.map(([c,ref,e])=>cellX(ref,e)).join("")}</row>`}).join("");
     const head=SINT_TPL.head.replace(/<dimension ref="[^"]*"\/>/,`<dimension ref="A1:N${q}"/>`).replace(/<selection [^>]*\/>/,'<selection activeCell="B4" sqref="B4"/>');
     const sheet=head+"<sheetData>"+rowsX+"</sheetData>"+SINT_TPL.tail;
-    // ---- cache da tabela dinâmica (só os dados; sem a aba BASE)
-    const cf=FIELDS.map((n,i)=>i===3?`<cacheField name="${xe(n)}" numFmtId="0"><sharedItems containsSemiMixedTypes="0" containsString="0" containsNumber="1" minValue="${recs.length?vmin:0}" maxValue="${recs.length?vmax:0}"/></cacheField>`
-      :`<cacheField name="${xe(n)}" numFmtId="0"><sharedItems count="${shared[i].length}">${shared[i].map(v=>`<s v="${xe(v)}"/>`).join("")}</sharedItems></cacheField>`).join("");
-    const cacheDef=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotCacheDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId1" refreshOnLoad="1" createdVersion="8" refreshedVersion="8" minRefreshableVersion="3" recordCount="${recs.length}"><cacheSource type="worksheet"><worksheetSource ref="A1:I${recs.length+1}" sheet="BASE"/></cacheSource><cacheFields count="${FIELDS.length}">${cf}</cacheFields></pivotCacheDefinition>`;
-    const recX=recs.map(a=>"<r>"+a.map((v,i)=>i===3?`<n v="${v}"/>`:`<x v="${v}"/>`).join("")+"</r>").join("");
-    const cacheRec=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotCacheRecords xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" count="${recs.length}">${recX}</pivotCacheRecords>`;
+    // ---- cache da tabela dinâmica (todos os títulos, com todas as colunas da base, como no modelo)
+    const cf=C0.map((c,i)=>{const g=rng[i],bl=g.blank?' containsBlank="1"':"",ok=g.min!==Infinity;
+      if(c.tipo==="x")return`<cacheField name="${xe(c.nome)}" numFmtId="0"><sharedItems count="${shared[i].length}">${shared[i].map(v=>`<s v="${xe(v)}"/>`).join("")}</sharedItems></cacheField>`;
+      if(c.tipo==="n")return`<cacheField name="${xe(c.nome)}" numFmtId="0"><sharedItems containsString="0"${bl} containsNumber="1"${ok?` minValue="${g.min}" maxValue="${g.max}"`:""}/></cacheField>`;
+      if(c.tipo==="d")return`<cacheField name="${xe(c.nome)}" numFmtId="14"><sharedItems containsNonDate="0" containsDate="1" containsString="0"${bl}${ok?` minDate="${serIso(g.min)}" maxDate="${serIso(g.max+1)}"`:""}/></cacheField>`;
+      return`<cacheField name="${xe(c.nome)}" numFmtId="0"><sharedItems${bl}/></cacheField>`}).join("");
+    const comBase=recs.length*NF<=2500000;
+    const mx=SINT_TPL.styles.match(/<cellXfs count="(\d+)">/);const XF_DATA=mx?+mx[1]:0;
+    const estilos=mx?SINT_TPL.styles.replace(/<cellXfs count="\d+">([\s\S]*?)<\/cellXfs>/,(m0,inner)=>`<cellXfs count="${XF_DATA+1}">${inner}<xf numFmtId="14" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>`):SINT_TPL.styles;
+    const sC=(ref,v)=>`<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xe(v)}</t></is></c>`;const LET=C0.map((c,i)=>colL(i));
+    const baseRows=[`<row r="1">${C0.map((c,i)=>sC(LET[i]+"1",c.nome)).join("")}</row>`];
+    if(comBase)recs.forEach((a,k)=>{const rn=k+2;let h=`<row r="${rn}">`;for(let i=0;i<NF;i++){const c=C0[i],v=a[i];if(c.tipo==="x"){h+=sC(LET[i]+rn,shared[i][v]);continue}if(v==null)continue;
+        h+=c.tipo==="s"?sC(LET[i]+rn,v):`<c r="${LET[i]}${rn}"${c.tipo==="d"?` s="${XF_DATA}"`:""}><v>${v}</v></c>`}baseRows.push(h+"</row>")});
+    const baseSheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:${colL(NF-1)}${recs.length+1}"/><sheetData>${baseRows.join("")}</sheetData></worksheet>`;
+    const cacheDef=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotCacheDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId1" refreshOnLoad="${comBase?1:0}" createdVersion="8" refreshedVersion="8" minRefreshableVersion="3" recordCount="${recs.length}"><cacheSource type="worksheet"><worksheetSource ref="A1:${colL(NF-1)}${recs.length+1}" sheet="BASE"/></cacheSource><cacheFields count="${NF}">${cf}</cacheFields></pivotCacheDefinition>`;
+    const parts=[];for(const a of recs){let h="<r>";for(let i=0;i<NF;i++){const c=C0[i],v=a[i];if(c.tipo==="x"){h+=`<x v="${v}"/>`;continue}if(v==null){h+="<m/>";continue}h+=c.tipo==="n"?`<n v="${v}"/>`:c.tipo==="d"?`<d v="${serIso(v)}"/>`:`<s v="${xe(v)}"/>`}parts.push(h+"</r>")}
+    const cacheRec=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotCacheRecords xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" count="${recs.length}">${parts.join("")}</pivotCacheRecords>`;
     // ---- origem da tabela dinâmica: aba BASE oculta (só os totais por cedente/rótulo/motivo), para o Excel conseguir filtrar e atualizar
-    const colL=i=>String.fromCharCode(65+i);
-    const baseRows=[`<row r="1">${FIELDS.map((n,i)=>`<c r="${colL(i)}1" t="inlineStr"><is><t>${xe(n)}</t></is></c>`).join("")}</row>`];
-    recs.forEach((a,k)=>{const rn=k+2;baseRows.push(`<row r="${rn}">${a.map((v,i)=>i===3?`<c r="${colL(i)}${rn}"><v>${v}</v></c>`:`<c r="${colL(i)}${rn}" t="inlineStr"><is><t xml:space="preserve">${xe(shared[i][v])}</t></is></c>`).join("")}</row>`)});
-    const baseSheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><dimension ref="A1:I${recs.length+1}"/><sheetData>${baseRows.join("")}</sheetData></worksheet>`;
     // ---- tabela dinâmica
     const itens=f=>`<items count="${shared[f].length+1}">${ordem[f].map(si=>`<item x="${si}"/>`).join("")}<item t="default"/></items>`;
-    const pf=FIELDS.map((n,f)=>{if(f===0)return`<pivotField axis="axisPage" showAll="0">${itens(0)}</pivotField>`;if(f===3)return`<pivotField dataField="1" showAll="0"/>`;
-      if(f===2)return`<pivotField axis="axisRow" showAll="0" sortType="descending">${itens(2)}<autoSortScope><pivotArea dataOnly="0" outline="0" fieldPosition="0"><references count="1"><reference field="4294967294" count="1" selected="0"><x v="0"/></reference></references></pivotArea></autoSortScope></pivotField>`;
-      return`<pivotField axis="axisRow" showAll="0">${itens(f)}</pivotField>`}).join("");
+    const pf=C0.map((c,f)=>{if(f===CED)return`<pivotField axis="axisPage" showAll="0">${itens(f)}</pivotField>`;if(f===VAL)return`<pivotField dataField="1" showAll="0"/>`;
+      if(f===MOT)return`<pivotField axis="axisRow" showAll="0" sortType="descending">${itens(f)}<autoSortScope><pivotArea dataOnly="0" outline="0" fieldPosition="0"><references count="1"><reference field="4294967294" count="1" selected="0"><x v="0"/></reference></references></pivotArea></autoSortScope></pivotField>`;
+      if(ROWF.includes(f))return`<pivotField axis="axisRow" showAll="0">${itens(f)}</pivotField>`;return`<pivotField showAll="0"/>`}).join("");
     const xv=v=>v?`<x v="${v}"/>`:"<x/>";
     const ri=L.map(l=>`<i${l.d?` r="${l.d}"`:""}>${xv(pos[l.f][l.k])}</i>`).join("")+`<i t="grand"><x/></i>`;
-    const yel=ordem[8].map((si,p)=>shared[8][si]!=="#N/A"?p:-1).filter(p=>p>=0);
-    const fmts=[`<format dxfId="1"><pivotArea field="5" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="0"/></format>`,
+    const yel=ordem[IX.dif].map((si,p)=>shared[IX.dif][si]!=="#N/A"?p:-1).filter(p=>p>=0);
+    const fmts=[`<format dxfId="1"><pivotArea field="${IX.reg}" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="0"/></format>`,
       `<format dxfId="2"><pivotArea dataOnly="0" labelOnly="1" outline="0" fieldPosition="0"><references count="1"><reference field="4294967294" count="2"><x v="0"/><x v="1"/></reference></references></pivotArea></format>`,
-      ...yel.map(p=>`<format dxfId="4"><pivotArea dataOnly="0" labelOnly="1" fieldPosition="0"><references count="1"><reference field="8" count="1"><x v="${p}"/></reference></references></pivotArea></format>`),
-      `<format dxfId="7"><pivotArea field="8" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="1"/></format>`,
+      ...yel.map(p=>`<format dxfId="4"><pivotArea dataOnly="0" labelOnly="1" fieldPosition="0"><references count="1"><reference field="${IX.dif}" count="1"><x v="${p}"/></reference></references></pivotArea></format>`),
+      `<format dxfId="7"><pivotArea field="${IX.dif}" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="1"/></format>`,
       `<format dxfId="8"><pivotArea dataOnly="0" labelOnly="1" outline="0" fieldPosition="0"><references count="1"><reference field="4294967294" count="2"><x v="0"/><x v="1"/></reference></references></pivotArea></format>`,
       `<format dxfId="9"><pivotArea grandRow="1" outline="0" collapsedLevelsAreSubtotals="1" fieldPosition="0"/></format>`,
       `<format dxfId="10"><pivotArea dataOnly="0" labelOnly="1" grandRow="1" outline="0" fieldPosition="0"/></format>`,
-      `<format dxfId="11"><pivotArea field="8" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="1"/></format>`,
+      `<format dxfId="11"><pivotArea field="${IX.dif}" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="1"/></format>`,
       `<format dxfId="12"><pivotArea dataOnly="0" labelOnly="1" outline="0" fieldPosition="0"><references count="1"><reference field="4294967294" count="2"><x v="0"/><x v="1"/></reference></references></pivotArea></format>`,
       `<format dxfId="13"><pivotArea grandRow="1" outline="0" collapsedLevelsAreSubtotals="1" fieldPosition="0"/></format>`,
       `<format dxfId="14"><pivotArea dataOnly="0" labelOnly="1" grandRow="1" outline="0" fieldPosition="0"/></format>`,
-      `<format dxfId="15"><pivotArea dataOnly="0" labelOnly="1" outline="0" fieldPosition="0"><references count="1"><reference field="0" count="0"/></references></pivotArea></format>`,
-      `<format dxfId="16"><pivotArea field="8" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="1"/></format>`,
+      `<format dxfId="15"><pivotArea dataOnly="0" labelOnly="1" outline="0" fieldPosition="0"><references count="1"><reference field="${CED}" count="0"/></references></pivotArea></format>`,
+      `<format dxfId="16"><pivotArea field="${IX.dif}" type="button" dataOnly="0" labelOnly="1" outline="0" axis="axisRow" fieldPosition="1"/></format>`,
       `<format dxfId="17"><pivotArea dataOnly="0" labelOnly="1" outline="0" fieldPosition="0"><references count="1"><reference field="4294967294" count="2"><x v="0"/><x v="1"/></reference></references></pivotArea></format>`,
       `<format dxfId="18"><pivotArea grandRow="1" outline="0" collapsedLevelsAreSubtotals="1" fieldPosition="0"/></format>`,
       `<format dxfId="19"><pivotArea dataOnly="0" labelOnly="1" grandRow="1" outline="0" fieldPosition="0"/></format>`,
       `<format dxfId="21"><pivotArea outline="0" collapsedLevelsAreSubtotals="1" fieldPosition="0"><references count="1"><reference field="4294967294" count="1" selected="0"><x v="1"/></reference></references></pivotArea></format>`,
       `<format dxfId="22"><pivotArea dataOnly="0" labelOnly="1" outline="0" fieldPosition="0"><references count="1"><reference field="4294967294" count="1"><x v="1"/></reference></references></pivotArea></format>`];
-    const pivot=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotTableDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="Tabela dinâmica5" cacheId="1" applyNumberFormats="0" applyBorderFormats="0" applyFontFormats="0" applyPatternFormats="0" applyAlignmentFormats="0" applyWidthHeightFormats="1" dataCaption="Valores" grandTotalCaption="TOTAL" updatedVersion="8" minRefreshableVersion="3" useAutoFormatting="1" itemPrintTitles="1" createdVersion="8" indent="0" outline="1" outlineData="1" multipleFieldFilters="0" rowHeaderCaption="STATUS"><location ref="A6:C${fimPiv}" firstHeaderRow="0" firstDataRow="1" firstDataCol="1" rowPageCount="1" colPageCount="1"/><pivotFields count="${FIELDS.length}">${pf}</pivotFields><rowFields count="${ROWF.length}">${ROWF.map(f=>`<field x="${f}"/>`).join("")}</rowFields><rowItems count="${L.length+1}">${ri}</rowItems><colFields count="1"><field x="-2"/></colFields><colItems count="2"><i><x/></i><i i="1"><x v="1"/></i></colItems><pageFields count="1"><pageField fld="0" item="${pos[0][ini]}" hier="-1"/></pageFields><dataFields count="2"><dataField name="RISCO" fld="3" baseField="0" baseItem="0" numFmtId="165"/><dataField name="%" fld="3" showDataAs="percentOfCol" baseField="0" baseItem="1" numFmtId="166"/></dataFields><formats count="${fmts.length}">${fmts.join("")}</formats><pivotTableStyleInfo name="Estilo de Tabela Dinâmica 1" showRowHeaders="1" showColHeaders="1" showRowStripes="1" showColStripes="0" showLastColumn="1"/><extLst><ext uri="{962EF5D1-5CA2-4c93-8EF4-DBF5C05439D2}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:pivotTableDefinition hideValuesRow="1" xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"/></ext></extLst></pivotTableDefinition>`;
+    const pivot=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<pivotTableDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="Tabela dinâmica5" cacheId="1" applyNumberFormats="0" applyBorderFormats="0" applyFontFormats="0" applyPatternFormats="0" applyAlignmentFormats="0" applyWidthHeightFormats="1" dataCaption="Valores" grandTotalCaption="TOTAL" updatedVersion="8" minRefreshableVersion="3" useAutoFormatting="1" itemPrintTitles="1" createdVersion="8" indent="0" outline="1" outlineData="1" multipleFieldFilters="0" rowHeaderCaption="STATUS"><location ref="A6:C${fimPiv}" firstHeaderRow="0" firstDataRow="1" firstDataCol="1" rowPageCount="1" colPageCount="1"/><pivotFields count="${NF}">${pf}</pivotFields><rowFields count="${ROWF.length}">${ROWF.map(f=>`<field x="${f}"/>`).join("")}</rowFields><rowItems count="${L.length+1}">${ri}</rowItems><colFields count="1"><field x="-2"/></colFields><colItems count="2"><i><x/></i><i i="1"><x v="1"/></i></colItems><pageFields count="1"><pageField fld="${CED}" item="${pos[CED][ini]}" hier="-1"/></pageFields><dataFields count="2"><dataField name="RISCO" fld="${VAL}" baseField="0" baseItem="0" numFmtId="165"/><dataField name="%" fld="${VAL}" showDataAs="percentOfCol" baseField="0" baseItem="1" numFmtId="166"/></dataFields><formats count="${fmts.length}">${fmts.join("")}</formats><pivotTableStyleInfo name="Estilo de Tabela Dinâmica 1" showRowHeaders="1" showColHeaders="1" showRowStripes="1" showColStripes="0" showLastColumn="1"/><extLst><ext uri="{962EF5D1-5CA2-4c93-8EF4-DBF5C05439D2}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:pivotTableDefinition hideValuesRow="1" xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"/></ext></extLst></pivotTableDefinition>`;
     // ---- pacote
     const R='http://schemas.openxmlformats.org/officeDocument/2006/relationships',P='http://schemas.openxmlformats.org/package/2006/relationships';
     const files={
@@ -495,12 +498,12 @@ const SinteseXlsx=(()=>{
       "xl/pivotCache/pivotCacheDefinition1.xml":cacheDef,
       "xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels":`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="${P}"><Relationship Id="rId1" Type="${R}/pivotCacheRecords" Target="pivotCacheRecords1.xml"/></Relationships>`,
       "xl/pivotCache/pivotCacheRecords1.xml":cacheRec,
-      "xl/styles.xml":SINT_TPL.styles,
+      "xl/styles.xml":estilos,
       "xl/theme/theme1.xml":SINT_TPL.theme};
     const C=X.CFB,z=C.utils.cfb_new({fileType:"zip"});const enc=new TextEncoder();
     for(const[k,v]of Object.entries(files))C.utils.cfb_add(z,k,enc.encode(v));
     const out=C.write(z,{fileType:"zip",type:"array",compression:true});
-    return{bytes:out instanceof Uint8Array?out:new Uint8Array(out),cedente:shared[0][ini],cedentes:shared[0].length,linhas:L.length}}
+    return{bytes:out instanceof Uint8Array?out:new Uint8Array(out),cedente:shared[CED][ini],cedentes:shared[CED].length,linhas:L.length}}
   return{gerar}
 })();
 
@@ -659,10 +662,33 @@ const Geral=(()=>{
       let nome=(lista.length>1?String(S.nome).replace(/[\\\/\?\*\[\]:]/g," ").slice(0,28):"SINTESE DO RISCO").trim()||S.cod;let n2=nome,k=2;while(usados.has(n2))n2=nome.slice(0,26)+" "+k++;usados.add(n2);
       X.utils.book_append_sheet(wb,ws,n2)}
     return wb}
-  function sinteseArquivo(X,base,ctx,codIni){
-    const T=titulos(base,ctx);const conf=GERAL_MOT.filter(m=>m[1]===0).map(m=>m[0]);
+  const REFS=["PRICING","REGIONAL2","RATING AGRO","RATING","DIFICULDADE DE CHECAGEM"];
+  const refVals=rf=>[rf.pricing||"#N/A",rf.regional||"#N/A",rf.ragro||"NÃO É AGRO",rf.rating||"SEM RATING AGRO",rf.dificuldade||"#N/A"];
+  const ehData=n=>/^(dta\.?|emiss|venc|sa[ií]da|data)/i.test(String(n).trim());
+  /* raw = {hdr, rows} com todas as colunas da base, na ordem do arquivo */
+  function sinteseArquivo(X,base,ctx,codIni,raw){
+    const conf=GERAL_MOT.filter(m=>m[1]===0).map(m=>m[0]);
     const motConf={conf,c99:GERAL_MOT.filter(m=>/^C99/i.test(m[0])).map(m=>m[0]),nc:["Nada consta / sacado não recebeu mercadoria","Nada consta na transportadora"],eConf:m=>classe(m)[0]===0};
-    return SinteseXlsx.gerar(X,T,cod=>refCed(cod,base,ctx),cod=>(base.ced||{})[cod]||((ctx.lim||{})[cod]||{}).nome||cod,codIni,ctx.desempenho||DESEMPENHO_PADRAO,motConf)}
+    const rc=new Map();const refDe=cod=>{if(!rc.has(cod))rc.set(cod,refVals(refCed(cod,base,ctx)));return rc.get(cod)};
+    let D,cedIni=null;
+    if(raw&&raw.hdr&&raw.rows&&raw.rows.length){
+      const H=raw.hdr.map(h=>String(h==null?"":h).trim());const nH=H.map(nk);const ix=n=>nH.indexOf(nk(n));
+      const iCod=ix("Cod. Cedente"),iCed=ix("Cedente"),iRot=ix("Rótulo"),iMot=ix("Motivo Entrega"),iVal=ix("Vlr. Aberto");
+      const visto={};const nomes=H.map(h=>{const k=nk(h);visto[k]=(visto[k]||0)+1;return visto[k]>1?h+visto[k]:h});
+      const rows=raw.rows.filter(r=>{const cod=String(r[iCod]==null?"":r[iCod]).replace(/\D/g,"").replace(/^0+/,"");if(!cod)return false;if(ctx.vis&&!ctx.vis(cod))return false;return!semAtuacao(r[iRot])});
+      const tipos=H.map((h,i)=>{if(i===iCed||i===iRot||i===iMot)return"x";if(i===iVal)return"n";let num=true,any=false;for(const r of rows){const v=r[i];if(v==null||v==="")continue;any=true;if(typeof v!=="number"){num=false;break}}return any&&num?(ehData(h)?"d":"n"):"s"});
+      const nr=v=>typeof v==="number"?v:(()=>{let t=String(v==null?"":v).trim();if(/,\d+$/.test(t))t=t.replace(/\./g,"").replace(",",".");const n=parseFloat(t.replace(/[^\d.\-]/g,""));return isFinite(n)?n:0})();
+      const cols=[...nomes.map((n,i)=>({nome:n,tipo:tipos[i]})),...REFS.map(n=>({nome:nomes.some(x=>nk(x)===nk(n))?n+"2":n,tipo:"x"}))];
+      const linhas=rows.map(r=>{const cod=String(r[iCod]).replace(/\D/g,"").replace(/^0+/,"");const l=H.map((h,i)=>{const v=r[i];if(i===iVal)return nr(v);if(i===iCed||i===iRot||i===iMot)return v==null?"":String(v).trim();if(tipos[i]==="s")return v==null?"":String(v);return v});return l.concat(refDe(cod))});
+      const n0=H.length;D={cols,linhas,ix:{ced:iCed,rot:iRot,mot:iMot,val:iVal,pri:n0,reg:n0+1,rag:n0+2,rat:n0+3,dif:n0+4}};
+      if(codIni){const r=rows.find(r=>String(r[iCod]).replace(/\D/g,"").replace(/^0+/,"")===String(codIni));if(r)cedIni=String(r[iCed]==null?"":r[iCed]).trim()}
+    }else{
+      const T=titulos(base,ctx);const nome=cod=>(base.ced||{})[cod]||((ctx.lim||{})[cod]||{}).nome||cod;
+      const cols=[["Cedente","x"],["Rótulo","x"],["Motivo Entrega","x"],["Vlr. Aberto","n"],...REFS.map(n=>[n,"x"]),["Cod. Cedente","n"],["Seu Número","s"],["Título","s"],["Aditivo","s"],["Cod. Sacado","s"],["Sacado","s"],["Emissão NFe","d"],["Venc. Orig.","d"]].map(([nome,tipo])=>({nome,tipo}));
+      const linhas=T.map(t=>{const r=t.r;return[nome(t.cod),t.rot,t.mot,t.v,...refDe(t.cod),+t.cod||t.cod,r[7]||"",String(r[0]).replace(/#\d+$/,""),r[5]||"",t.sacc,t.sac,r[10]||"",r[20]||""]});
+      D={cols,linhas,ix:{ced:0,rot:1,mot:2,val:3,pri:4,reg:5,rag:6,rat:7,dif:8}};if(codIni)cedIni=nome(codIni);
+    }
+    return SinteseXlsx.gerar(X,D,cedIni,ctx.desempenho||DESEMPENHO_PADRAO,motConf)}
   return{classe,CL,montarD,html,sinteseDados,sintesePlanilha,sinteseArquivo,titulos,refCed,semAtuacao,DESEMPENHO_PADRAO,nk}
 })();
 
@@ -1004,10 +1030,10 @@ const Qprof=(function(){
     const pend=A.grupos.filter(g=>g.motivo&&!g.opdia&&!isOK(g.motivo));
     pend.forEach(g=>{
       const u=norm(g.motivo),fones=/DIFICULDADE|NÃO ATENDE|NAO ATENDE|^NA$/.test(u),nada=/NADA CONSTA/.test(u),c99=u.startsWith("C99");
-      const head=["Nota Fiscal","Rótulo","Cod. Sacado","Sacado",...(fones?["Fone1","Fone2","Fone3"]:[]),"Status Checagem","Vlr. Aberto","Emissão NFe",...(nada?["Atraso"]:[]),"Venc. Orig."];
+      const head=["Cod. Cedente","Nota Fiscal","Aditivo","Rótulo","Cod. Sacado","Sacado",...(fones?["Fone1","Fone2","Fone3"]:[]),"Status Checagem","Vlr. Aberto","Emissão NFe",...(nada?["Atraso"]:[]),"Venc. Orig."];
       const aoa=[head.map(h=>cell(h,H))];const vi=head.indexOf("Vlr. Aberto"),si=head.indexOf("Status Checagem");
       g.itens.forEach(i=>{const r=i.r;const em=dt(v(r,c.emis));const nfTxt=i.nfTxt!=null?i.nfTxt:txt(v(r,c.nf));
-        const row=[cell(nfTxt,Cc,true),cell(v(r,c.rot),Cc),cell(v(r,c.cods),Cc),cell(v(r,c.sac),Cc),
+        const row=[cell(v(r,c.codc),Cc),cell(nfTxt,Cc,true),cell(c.adit>=0?String(v(r,c.adit)==null?"":v(r,c.adit)):"",Cc,true),cell(v(r,c.rot),Cc),cell(v(r,c.cods),Cc),cell(v(r,c.sac),Cc),
           ...(fones?[cell(v(r,c.f1>=0?c.f1:c.fone),Cc),cell(v(r,c.f2),Cc),cell(v(r,c.cel),Cc)]:[]),
           cell(i.motivo,c99?red(Cc):Cc),cell(i.valor,Cm),cell(em,Cd),...(nada?[cell(em instanceof Date?Math.round((A.hoje-em)/864e5):"",Cc)]:[]),cell(dt(v(r,c.venc)),Cd)];
         aoa.push(row)});
@@ -1137,9 +1163,9 @@ const store={kind:null,db:null,
   async del(col,id){if(this.kind==="db")return this.db.collection(col).doc(id).delete();
     if(this.kind==="sb"){const{error}=await SBC.cli.from("docs").delete().eq("col",col).eq("id",id);if(error)throw error;this.apply(col,id,null);sbRender();return}
     this.local(col,id,null)},
-  async baseDocs(date){
-    if(this.kind==="db"){const s=await this.db.collection("base").where("date","==",date).get();return s.docs.map(d=>({id:d.id,...d.data()}))}
-    if(this.kind==="sb"){const{data,error}=await SBC.cli.from("docs").select("id,data").eq("col","base").like("id",date+"%");if(error)throw error;return(data||[]).map(r=>({id:r.id,...r.data}))}
+  async baseDocs(date,kinds){kinds=kinds||["car","tra"];
+    if(this.kind==="db"){const s=await this.db.collection("base").where("date","==",date).get();return s.docs.map(d=>({id:d.id,...d.data()})).filter(d=>kinds.includes(d.kind))}
+    if(this.kind==="sb"){let out=[];for(const k of kinds){const{data,error}=await SBC.cli.from("docs").select("id,data").eq("col","base").like("id",date+"_"+k+"_%");if(error)throw error;out=out.concat((data||[]).map(r=>({id:r.id,...r.data})))}return out}
     return[]}
 };
 async function safe(p,ok){try{await p;if(ok)toast(ok);return true}catch(e){toast(e&&e.code==="quota_exceeded"?"Limite de armazenamento atingido. Exclua posições antigas em Ajustes.":"Não foi possível salvar ("+(e&&e.code||e&&e.message||"erro")+"). Tente de novo.");return false}}
@@ -1150,6 +1176,23 @@ const idb={p:null,open(){if(this.p)return this.p;this.p=new Promise((res,rej)=>{
   async tx(mode,fn){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction("bases",mode);const st=t.objectStore("bases");const r=fn(st);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})},
   get(k){return this.tx("readonly",st=>st.get(k)).catch(()=>null)},put(k,v){return this.tx("readwrite",st=>st.put(v,k)).then(()=>true).catch(()=>false)},del(k){return this.tx("readwrite",st=>st.delete(k)).catch(()=>null)}};
 
+/* ---------- base original com todas as colunas (comprimida) ---------- */
+const b64=u=>{let s="";for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)};
+const unb64=t=>{const s=atob(t);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u};
+async function rawChunks(date,raw){const X=await XLSXlib();const U=X.CFB.utils;const enc=new TextEncoder();const docs=[];let part=0;
+  for(let i=0;i<raw.rows.length;i+=2500){const z=U._deflateRaw(enc.encode(JSON.stringify(raw.rows.slice(i,i+2500))));docs.push({id:`${date}_raw_${part}`,data:{date,kind:"raw",part,z:b64(z instanceof Uint8Array?z:new Uint8Array(z))}});part++}
+  docs.push({id:`${date}_raw_d`,data:{date,kind:"raw",part:-1,hdr:raw.hdr,parts:part,n:raw.rows.length}});return docs}
+async function loadRaw(date){if(!date)return null;S.raws=S.raws||new Map();if(S.raws.has(date))return S.raws.get(date);let res=null;
+  try{if(store.kind==="local"){const v=await idb.get(date);res=v&&v.raw||null}
+    else{const docs=await store.baseDocs(date,["raw"]);const d=docs.find(x=>x.part===-1);if(d){const X=await XLSXlib();const U=X.CFB.utils;const dec=new TextDecoder();const parts=docs.filter(x=>x.part>=0).sort((a,b)=>a.part-b.part);
+      if(parts.length===d.parts){const rows=[];for(const p of parts){const o=U._inflateRaw(unb64(p.z));rows.push(...JSON.parse(dec.decode(o instanceof Uint8Array?o:new Uint8Array(o))))};res={hdr:d.hdr,rows}}}}}catch(e){res=null}
+  S.raws.set(date,res);return res}
+/* junta a base original nova com a anterior (mesma regra da base: os cedentes mantidos continuam) */
+function juntarRaw(velha,neu,manter){if(!velha||!velha.rows||!manter||!manter.size)return neu;const nk2=x=>Core.nrm(x);
+  const oc={},mapa=velha.hdr.map(h=>{const k=nk2(h);oc[k]=(oc[k]||0)+1;return k+"#"+oc[k]});const on={},pos=new Map(neu.hdr.map((h,i)=>{const k=nk2(h);on[k]=(on[k]||0)+1;return[k+"#"+on[k],i]}));
+  const iCodV=velha.hdr.findIndex(h=>nk2(h)===nk2("Cod. Cedente"));if(iCodV<0)return neu;
+  const extra=velha.rows.filter(r=>manter.has(String(Core.toInt(r[iCodV])))).map(r=>{const o=new Array(neu.hdr.length).fill(null);mapa.forEach((k,i)=>{const j=pos.get(k);if(j!=null)o[j]=r[i]});return o});
+  return{hdr:neu.hdr,rows:neu.rows.concat(extra)}}
 /* ---------- bases título a título (sob demanda) ---------- */
 async function loadBase(date){
   if(!date)return null;if(S.bases.has(date))return S.bases.get(date);
@@ -1269,6 +1312,11 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 }
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
+ {v:"2026.10.29b",nome:"Beta 1.2",data:"29/10/2026",itens:[
+  "<b>Detalhes dos títulos:</b> além do que já aparecia, agora mostram sempre Cód. Cedente, Aditivo, Cód. Sacado, cidade/UF do sacado, data de entrega, vencimento, KM e Prazo NF.",
+  "<b>Planilha de pendências:</b> cada aba de motivo traz também Cod. Cedente e Aditivo, mantendo as colunas de antes.",
+  "<b>Síntese do risco:</b> clicando duas vezes num valor da tabela dinâmica, o Excel abre os títulos com todas as colunas da base, na mesma ordem do arquivo (Filial, Seu Número, Tipo, Espécie… Assistente, Monitorada), mais Pricing, Regional, Rating Agro, Rating e Dificuldade, como no modelo.",
+  "<b>Base para chamados:</b> a aba BASE da planilha de pendências, montada com a base registrada, também traz todas as colunas originais."]},
  {v:"2026.10.29",nome:"Beta 1.1",data:"29/10/2026",itens:[
   "<b>Login pelo link de convite:</b> a tela de login só abre pelo link que o administrador envia. Depois de entrar uma vez, o seu navegador fica liberado.",
   "<b>Sessão até a meia-noite:</b> todo dia, à meia-noite, o site desconecta e no dia seguinte é só entrar de novo.",
@@ -1624,7 +1672,7 @@ async function geralSintese(q){const date=geralData()||ultimo();const b=await lo
   const t=String(q||"").trim();if(t){const m=t.match(/^(\d+)/);c=m?m[1]:"";
     if(!c){const hit=geralCeds(b).filter(([k,n])=>Geral.nk(n).includes(Geral.nk(t)));if(hit.length===1)c=hit[0][0];else{toast(hit.length?"Mais de um cedente com esse nome; escolha na lista.":"Cedente não encontrado nesta base.");return}}
     if(!base.rows.some(r=>String(r[1])===c)){toast("Este cedente não tem títulos na base de "+fd(date)+".");return}}
-  const X=await XLSXlib();let r;try{r=Geral.sinteseArquivo(X,base,ctx,c)}catch(e){toast("Não consegui montar a planilha: "+(e.message||e));return}
+  const X=await XLSXlib();const raw=await loadRaw(date);let r;try{r=Geral.sinteseArquivo(X,base,ctx,c,raw)}catch(e){toast("Não consegui montar a planilha: "+(e.message||e));return}
   if(!r.cedentes){toast("Nenhum título (fora dos rótulos sem atuação) para montar a síntese.");return}
   await baixar(`SINTESE DO RISCO ${fd(date).replace(/\//g,".")}.xlsx`,r.bytes,"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
 
@@ -2122,8 +2170,13 @@ function qTodos(){if(S.qLoteArq)return qLoteHtml(S.qLoteArq.out,S.qLoteArq.titul
   if(b0===undefined)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="hint carregando">Carregando a base de ${fd(d)}…</p></fieldset>`;
   const b=b0&&b0.car;if(!b)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="muted">A base de ${fd(d)} não tem os títulos salvos. Importe a base do dia de novo.</p></fieldset>`;
   const key=[d,S.visao,S.visaoPessoa,(S.regs[d]||{}).criadoEm].join("|");
-  if(!S.qTodosC||S.qTodosC.key!==key){const cods=[...new Set(b.rows.map(r=>String(r[1])))].filter(c=>vis(c));
-    S.qTodosC={key,data:d,out:qLote(cods.map(cod=>({cod,nome:(b.ced||{})[cod]||nomeCed(cod),hdr:Q_HDR,rows:qLinhasBase(b,cod)})),d)}}
+  S.raws=S.raws||new Map();if(!S.raws.has(d)){if(!S.rawCarregando){S.rawCarregando=true;loadRaw(d).finally(()=>{S.rawCarregando=false;render()})}return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="hint carregando">Carregando a base de ${fd(d)}…</p></fieldset>`}
+  const rw=S.raws.get(d);const kk=key+(rw?"|raw":"");
+  if(!S.qTodosC||S.qTodosC.key!==kk){const cods=[...new Set(b.rows.map(r=>String(r[1])))].filter(c=>vis(c));
+    let grupos;if(rw){const iC=rw.hdr.findIndex(h=>Core.nrm(h)===Core.nrm("Cod. Cedente"));const por=new Map();for(const r of rw.rows){const c=String(Core.toInt(r[iC]));if(!por.has(c))por.set(c,[]);por.get(c).push(r)}
+      grupos=cods.filter(c=>por.has(c)).map(cod=>({cod,nome:(b.ced||{})[cod]||nomeCed(cod),hdr:rw.hdr,rows:por.get(cod)}))}
+    else grupos=cods.map(cod=>({cod,nome:(b.ced||{})[cod]||nomeCed(cod),hdr:Q_HDR,rows:qLinhasBase(b,cod)}));
+    S.qTodosC={key:kk,data:d,out:qLote(grupos,d)}}
   const L=S.qTodosC.out;if(!L.length)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="muted">Nenhum cedente nesta visão.</p></fieldset>`;
   return qLoteHtml(L,`· base de ${fd(d)}`,d,"base")}
 function qIniciar(hdr,rows,nomeArq){
@@ -2291,10 +2344,12 @@ function openTit(cod,kind,f){
   mostrarTit(titulo,it,fd(d));
 }
 function mostrarTit(titulo,it,quando,extraCol){
-  it.sort((a,b)=>b.r[2]-a.r[2]);const tot=it.reduce((a,x)=>a+x.r[2],0);
+  it.sort((a,b)=>b.r[2]-a.r[2]);const tot=it.reduce((a,x)=>a+x.r[2],0);const d=v=>v?fd(serD(v)):"—";const tx=v=>v==null||v===""?"—":esc(v);
+  const velha=it.some(x=>x.r.length<18);
   drawer(titulo,`<div class="row-b"><span class="muted">Base de ${quando} · ${fN(it.length)} títulos · ${money(tot)}</span><button class="btn sm" data-act="copyTbl" data-id="tTit">Copiar tabela</button></div>
-  <div class="tw" style="max-height:62vh"><table class="grid" id="tTit"><thead><tr><th>Seu número</th><th>Título</th><th>Sacado</th><th>Vlr. Aberto</th><th>Motivo Entrega</th>${extraCol?"<th>"+extraCol.h+"</th>":""}<th>Emissão</th><th>Saída</th><th>Rótulo</th></tr></thead>
-  <tbody>${it.slice(0,1500).map(x=>{const r=x.r,b=x.bb;return`<tr><td class="num">${esc(r[7])}</td><td class="num small">${esc(r[0])}</td><td class="wrap">${esc(nomeB(b.sac[r[4]]||""))}</td><td class="r num">${money(r[2])}</td><td class="wrap small">${esc(b.mot[r[3]]||"")}</td>${extraCol?`<td class="wrap small">${esc(extraCol.f(x))}</td>`:""}<td class="num">${r[10]?fd(serD(r[10])):"—"}</td><td class="num">${r[9]?fd(serD(r[9])):"—"}</td><td class="small">${esc(b.rot[r[8]]||"")}</td></tr>`}).join("")||'<tr><td colspan="9" class="muted">Nenhum título.</td></tr>'}</tbody></table></div>${it.length>1500?'<p class="hint">Mostrando os 1.500 maiores.</p>':""}`,"",true);
+  ${velha?'<p class="warn-box">Esta base foi importada antes da atualização: código do sacado e vencimento aparecem a partir da próxima importação.</p>':""}
+  <div class="tw" style="max-height:62vh"><table class="grid" id="tTit"><thead><tr><th>Cód. Cedente</th><th>Seu número</th><th>Título</th><th>Aditivo</th><th>Cód. Sacado</th><th>Sacado</th><th>Cidade/UF do sacado</th><th>Vlr. Aberto</th><th>Motivo Entrega</th>${extraCol?"<th>"+extraCol.h+"</th>":""}<th>Emissão</th><th>Saída</th><th>Dta. Ent.</th><th>Venc. Orig.</th><th>KM</th><th>Prazo NF</th><th>Rótulo</th></tr></thead>
+  <tbody>${it.slice(0,1500).map(x=>{const r=x.r,b=x.bb;return`<tr><td class="num">${esc(r[1])}</td><td class="num">${tx(r[7])}</td><td class="num small">${esc(String(r[0]).replace(/#\d+$/,""))}</td><td class="num small">${tx(r[5])}</td><td class="num">${tx(r[19])}</td><td class="wrap">${esc(nomeB(b.sac[r[4]]||""))}</td><td class="small">${r[15]!=null?esc((b.dst||[])[r[15]]||""):"—"}</td><td class="r num">${money(r[2])}</td><td class="wrap small">${esc(b.mot[r[3]]||"")}</td>${extraCol?`<td class="wrap small">${esc(extraCol.f(x))}</td>`:""}<td class="num">${d(r[10])}</td><td class="num">${d(r[9])}</td><td class="num">${d(r[6])}</td><td class="num">${d(r[20])}</td><td class="r num">${typeof r[12]==="number"?fN(r[12]):"—"}</td><td>${r[13]===1?'<span class="st bad">FORA</span>':r[13]===0?'<span class="st ok">DENTRO</span>':"—"}</td><td class="small">${esc(b.rot[r[8]]||"")}</td></tr>`}).join("")||'<tr><td colspan="17" class="muted">Nenhum título.</td></tr>'}</tbody></table></div>${it.length>1500?'<p class="hint">Mostrando os 1.500 maiores.</p>':""}`,"",true);
 }
 function openRelTit(f,cod){
   const R=relMov();if(!R||!R.mv)return;const M=R.mv;
@@ -2432,12 +2487,15 @@ async function doImport(){
   try{
     if(D.wbRef&&$("#i_ref")&&$("#i_ref").checked){go.textContent="Atualizando referências…";await importarReferencias(D.refGet);await drawImport()}
     const Pp=D.parsed;let temBase=store.remote();
-    if(!temBase)temBase=await idb.put(data,{car:Pp.carB,tra:Pp.traB});
+    let rawNova=null;if(Pp.car&&Pp.car.raw&&Pp.car.raw.hdr){go.textContent="Guardando a base original…";const cNovos=new Set(Pp.car.b.rows.map(r=>String(r[1])));const manter=new Set(Pp.carB.rows.map(r=>String(r[1])).filter(c=>!cNovos.has(c)));
+      let velha=null;if(manter.size)velha=await loadRaw(S.regs[data]?data:(Pp.pv||anterior(data)));rawNova=juntarRaw(velha,{hdr:Pp.car.raw.hdr,rows:Pp.car.raw.rows},manter);S.raws=S.raws||new Map();S.raws.set(data,rawNova)}
+    if(!temBase)temBase=await idb.put(data,{car:Pp.carB,tra:Pp.traB,raw:rawNova});
     if(temBase){
-      const docs=[];if(Pp.car)docs.push(...baseChunks(data,"car",Pp.carB));if(Pp.tra||(!Pp.tra&&Pp.traB&&!S.regs[data]))docs.push(...baseChunks(data,"tra",Pp.traB));
-      const old=await store.baseDocs(data);const keep=new Set(docs.map(d=>d.id));
+      const docs=[];if(Pp.car)docs.push(...baseChunks(data,"car",Pp.carB));if(rawNova&&store.remote())docs.push(...await rawChunks(data,rawNova));if(Pp.tra||(!Pp.tra&&Pp.traB&&!S.regs[data]))docs.push(...baseChunks(data,"tra",Pp.traB));
+      const old=await store.baseDocs(data,["car","tra","raw"]);const keep=new Set(docs.map(d=>d.id));
       for(let i=0;i<docs.length;i++){go.textContent=`Salvando ${i+1} de ${docs.length}…`;await store.set("base",docs[i].id,docs[i].data);await pausa()}
-      for(const o of old)if(!keep.has(o.id)&&((Pp.car&&o.kind==="car")||(Pp.tra&&o.kind==="tra")))await store.del("base",o.id);
+      for(const o of old)if(!keep.has(o.id)&&((Pp.car&&o.kind==="car")||(Pp.tra&&o.kind==="tra")||(rawNova&&o.kind==="raw")))await store.del("base",o.id);
+      if(rawNova&&store.remote()){try{const ds=[...new Set([...regDatas(),data])].sort();for(const dv of ds.slice(0,-5)){const rd=await store.baseDocs(dv,["raw"]);for(const o of rd)await store.del("base",o.id);if(S.raws)S.raws.delete(dv)}}catch(e){}}
     }
     const prevReg=S.regs[data]||{};
     const doc={data,linhas:JSON.parse(JSON.stringify(Pp.linhas)),criadoEm:Date.now(),temBase:temBase||!!prevReg.temBase,arquivos:{cart:Pp.car?Pp.car.nome:(prevReg.arquivos&&prevReg.arquivos.cart)||"",tr:Pp.tra?Pp.tra.nome:(prevReg.arquivos&&prevReg.arquivos.tr)||""},titCart:Pp.carB?Pp.carB.rows.length:0,titTr:Pp.traB?Pp.traB.rows.length:0};
@@ -2590,7 +2648,7 @@ document.addEventListener("click",async e=>{
     case"close":closeDrawer();break;
     case"arm":{const key=el.dataset.key;if(S.armed!==key){S.armed=key;el.dataset.label=el.textContent;el.classList.add("armed");el.textContent="Confirmar exclusão";break}
       S.armed=null;const i=key.indexOf(":"),k=key.slice(0,i),v=key.slice(i+1);
-      if(k==="reg"){if(store.remote()){const docs=await store.baseDocs(v);for(const d of docs)await store.del("base",d.id)}else await idb.del(v);S.bases.delete(v);await safe(store.del("reg",v),"Posição excluída");if(S.dia===v)S.dia=null;if(S.relDia===v)S.relDia=null;render()}
+      if(k==="reg"){if(S.raws)S.raws.delete(v);if(store.remote()){const docs=await store.baseDocs(v,["car","tra","raw"]);for(const d of docs)await store.del("base",d.id)}else await idb.del(v);S.bases.delete(v);await safe(store.del("reg",v),"Posição excluída");if(S.dia===v)S.dia=null;if(S.relDia===v)S.relDia=null;render()}
       else if(k==="ch"){closeDrawer();await safe(store.del("chamados",v),"Chamado excluído")}
       else if(k==="qprof")await safe(store.del("qprof",v),"Excluído");
       else if(k==="mb")await membroDel(v);
