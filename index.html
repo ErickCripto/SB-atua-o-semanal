@@ -171,6 +171,12 @@ table.grid{border-collapse:collapse;width:100%}
 .pre-w{white-space:pre-wrap;overflow-wrap:anywhere}
 .gwrap{border:1px solid var(--line,#C9D1CE);border-radius:4px;overflow:hidden;background:#f6f5f2}.gframe{display:block;width:100%;height:calc(100vh - 230px);min-height:560px;border:0}
 .voltar{display:inline-flex;align-items:center;gap:4px;margin:0 0 8px;padding:5px 12px 5px 8px;border:1px solid #9FD0BE;border-radius:16px;background:#fff;color:#1F5C4B;font-weight:bold;cursor:pointer;font:inherit;font-weight:bold}.voltar:hover{background:#E3F1EC}
+.novid{position:fixed;inset:0;background:rgba(20,40,34,.45);z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:60px 16px;overflow:auto}
+.novid-w{background:#fff;border-radius:8px;max-width:620px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.25);border:1px solid #9FD0BE;overflow:hidden}
+.novid-h{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:linear-gradient(180deg,#2E8B6F,#1F6E57);color:#fff;font-size:15px}.novid-h .lk{color:#fff;font-size:16px}
+.novid-b{padding:12px 18px;max-height:60vh;overflow:auto}.novid-d{font-weight:bold;color:#1F5C4B;margin:6px 0 4px}.novid-v ul{margin:0 0 8px 18px;padding:0}.novid-v li{margin:5px 0;line-height:1.4}
+.novid-f{padding:10px 16px;border-top:1px solid #E3E8E6;text-align:right}
+.vbadge{margin-left:6px;border:1px solid #F0C36D;background:#FFF4DA;color:#8A5A00;font:inherit;font-size:10.5px;font-weight:bold;padding:1px 7px;border-radius:10px;cursor:pointer;vertical-align:middle;text-transform:uppercase;letter-spacing:.03em}.vbadge:hover{background:#FFE9B8}
 .umenu{position:relative;display:inline-block;outline:none}
 .uchip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border:1px solid #9FD0BE;border-radius:18px;background:#fff;cursor:pointer}
 .uav{width:24px;height:24px;border-radius:50%;background:var(--tab1,#1F7A62);color:#fff;font-weight:bold;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
@@ -221,7 +227,7 @@ table.grid{border-collapse:collapse;width:100%}
 <div id="menuPop" class="menupop" hidden></div>
 <div class="shell">
  <div class="strip">
-  <div class="bar"><span class="app">Mesa de Carteiras</span><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="visaoBox"></span><span id="basePos"></span><b id="saveMode" hidden>Conectando…</b><span id="userBox"></span></span></div>
+  <div class="bar"><span class="app">Mesa de Carteiras</span><button class="vbadge" id="versaoBox" data-act="novidades"></button><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="visaoBox"></span><span id="basePos"></span><b id="saveMode" hidden>Conectando…</b><span id="userBox"></span></span></div>
   <nav class="tabs">
    <button class="tab eq" data-act="go" data-v="geral" data-g="pesq" data-h="pesquisar" hidden>Pesquisar cedente</button><button class="tab eq" data-act="go" data-v="geral" data-g="down" data-h="dashboard" hidden>Dashboard e planilha</button><button class="tab eq" data-act="go" data-v="geral" data-g="imp" data-h="base" hidden>Colocar a base</button><button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button>
   </nav>
@@ -1257,8 +1263,49 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
   SBC.cli.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"){SBC.user=null;SBC.eu=null;S.mode="login";S.auth={tab:"entrar"};render()}});
   let ses=null;try{const{data}=await SBC.cli.auth.getSession();ses=data&&data.session}catch(e){}
   if(ses&&loginDia()!==diaSP()){await sessaoExpirada();return}
-  if(ses)await sbEntrar(ses.user);else{S.mode="login";render()}
+  if(ses){conviteMarcar();await sbEntrar(ses.user);return}
+  if(!(await conviteValido())){S.mode="restrito";render();return}
+  S.mode="login";render()
 }
+/* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
+const NOVIDADES=[
+ {v:"2026.10.29",nome:"Beta 1.1",data:"29/10/2026",itens:[
+  "<b>Login pelo link de convite:</b> a tela de login só abre pelo link que o administrador envia. Depois de entrar uma vez, o seu navegador fica liberado.",
+  "<b>Sessão até a meia-noite:</b> todo dia, à meia-noite, o site desconecta e no dia seguinte é só entrar de novo.",
+  "<b>Chamados da planilha:</b> ao importar a planilha do dia, os chamados da aba CHAMADOS entram na aba Chamados. Dá para editar motivo, datas, retorno e efetivo direto na tabela.",
+  "<b>Texto de pendências:</b> agora começa com “Do risco de R$ X, temos R$ Y pendentes de confirmação”, traz só o que está pendente e vai do maior para o menor valor.",
+  "<b>Todas as carteiras de uma vez:</b> na aba Base para chamados, o texto e a planilha de cada cedente, com “Copiar todos os textos” e “Baixar planilhas de todas” (.zip).",
+  "<b>Planilha de pendências:</b> Confirmação da Carteira no topo, Nota Fiscal igual ao arquivo e linha Total mesclada até o valor."]},
+ {v:"2026.10.28",nome:"Beta 1.0",data:"28/10/2026",itens:[
+  "<b>Todos os cedentes:</b> três abas — Pesquisar cedente (como ele está: risco, confirmação, C99, rótulos, motivos e sacados), Dashboard e planilha, e Colocar a base.",
+  "<b>Síntese do risco em Excel</b> no modelo da equipe, com filtro de cedente na célula B4.",
+  "<b>QPROF:</b> pode ser importado (.xlsx ou .csv) e entra na base do dia, junto com o que já está lá.",
+  "<b>Cada pessoa importa a sua planilha:</b> a base do dia junta as carteiras de todos, sem apagar a dos outros.",
+  "<b>Menu do login</b> no canto de cima: Ajustes e Controle (administradores), alterar senha e sair.",
+  "<b>Segurança:</b> 3 senhas erradas bloqueiam o acesso até um administrador liberar."]}
+];
+const VERSAO=NOVIDADES[0].v,VERSAO_NOME=NOVIDADES[0].nome;
+const chaveVista=()=>"mesa_versao_vista_"+String(SBC.user&&SBC.user.email||"local").toLowerCase();
+function novidadesAoEntrar(){let vista="";try{vista=localStorage.getItem(chaveVista())||""}catch(e){}
+  const novas=NOVIDADES.filter(n=>!vista||n.v>vista);if(!vista)novas.splice(1);if(novas.length)mostrarNovidades(novas,true)}
+function mostrarNovidades(lista,marcar){const el=document.createElement("div");el.className="novid";el.innerHTML=`<div class="novid-w" role="dialog" aria-modal="true" aria-labelledby="novT">
+   <div class="novid-h"><b id="novT">O que mudou no site · ${esc(VERSAO_NOME)}</b><button class="lk" data-novok>✕</button></div><div class="novid-b">
+   ${(lista||NOVIDADES).map(n=>`<div class="novid-v"><div class="novid-d">Versão ${esc(n.nome)} <span class="muted" style="font-weight:normal">· ${esc(n.data)}</span></div><ul>${n.itens.map(i=>`<li>${i}</li>`).join("")}</ul></div>`).join("")}</div>
+   <div class="novid-f"><button class="btn pri" data-novok>Entendi</button></div></div>`;
+  const fechar=()=>{try{localStorage.setItem(chaveVista(),VERSAO)}catch(e){}el.remove()};
+  el.addEventListener("click",e=>{if(e.target.closest("[data-novok]")||e.target===el)fechar()});document.body.appendChild(el);const b=el.querySelector(".novid-f .btn");if(b)b.focus()}
+/* só quem recebeu o link de convite do administrador vê a tela de login */
+function conviteDaUrl(){try{const u=new URL(location.href);const c=u.searchParams.get("convite");if(c){localStorage.setItem("mesa_convite",c.trim());u.searchParams.delete("convite");history.replaceState(null,"",u.pathname+(u.search||"")+u.hash)}}catch(e){}}
+const conviteMarcar=()=>{try{localStorage.setItem("mesa_liberado","1")}catch(e){}};
+async function conviteValido(){conviteDaUrl();let c="";try{c=localStorage.getItem("mesa_convite")||""}catch(e){}
+  if(!c)return false;
+  try{const{data,error}=await SBC.cli.rpc("convite_ok",{p_codigo:c});if(error){return /convite_ok|function/i.test(error.message)&&/not|find|exist|schema/i.test(error.message)}return data===true}catch(e){return false}}
+const novoCodigo=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);return[...a].map(x=>x.toString(16).padStart(2,"0")).join("")};
+const linkConvite=c=>location.origin+location.pathname+"?convite="+c;
+async function conviteDe(email,criar){const{data}=await SBC.cli.from("convites").select("*").eq("email",email);let c=(data||[])[0];
+  if(!c&&criar){const codigo=novoCodigo();const r=await SBC.cli.from("convites").insert({codigo,email});if(r.error)throw r.error;c={codigo,email}}return c}
+async function copiarConvite(email){try{const c=await conviteDe(email,true);const l=linkConvite(c.codigo);const m=(SBC.membros||[]).find(x=>x.email===email)||{};
+    drawer("Link de convite",`<p>Link de acesso de <b>${esc(m.nome||"")}</b>. Só quem abre o site por este link vê a tela de login. Envie por mensagem direta:</p><pre class="pre">${esc(l)}</pre><button class="btn pri" data-act="copyTxt" data-t="${esc(l)}">Copiar</button><p class="hint">Depois de entrar uma vez, o navegador da pessoa fica liberado. Se ela trocar de computador ou limpar o navegador, use o mesmo link de novo.</p>`,`<button class="btn" data-act="close">Fechar</button>`)}catch(e){toast(/convites/i.test(String(e.message))?"Falta rodar no Supabase o código dos convites (convites.sql).":String(e.message||e))}}
 /* login vale só até a meia-noite (horário de Brasília): no dia seguinte, todo mundo entra de novo */
 const diaSP=()=>{try{return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}catch(e){return today()}};
 const loginDia=()=>{try{return localStorage.getItem("mesa_login_dia")||""}catch(e){return""}};
@@ -1278,7 +1325,7 @@ async function sbEntrar(user){
     const rg=await SBC.cli.from("docs").select("id,data").eq("col","reg").order("id",{ascending:false}).limit(70);if(rg.error)throw rg.error;(rg.data||[]).forEach(r=>store.apply("reg",r.id,r.data));
     const qp=await SBC.cli.from("docs").select("id,data").eq("col","qprof").order("updated_at",{ascending:false}).limit(60);(qp.data||[]).forEach(r=>store.apply("qprof",r.id,r.data));
     if(!SBC.canal)SBC.canal=SBC.cli.channel("docs-mesa").on("postgres_changes",{event:"*",schema:"public",table:"docs"},p=>{const row=p.eventType==="DELETE"?p.old:p.new;if(!row||!row.col||row.col==="base")return;store.apply(row.col,row.id,p.eventType==="DELETE"?null:row.data);sbRender()}).subscribe();
-    S.mode="sb";if(!SBC.jaEntrou){SBC.jaEntrou=true;SBC.cli.rpc("registrar_acesso").then(()=>{},()=>{})}render();
+    S.mode="sb";if(!SBC.jaEntrou){SBC.jaEntrou=true;SBC.cli.rpc("registrar_acesso").then(()=>{},()=>{});setTimeout(novidadesAoEntrar,300)}render();
   }catch(e){S.mode="login";S.auth={tab:"entrar",err:"Não consegui carregar os dados ("+(e.message||e)+"). Confira se o setup.sql foi rodado no Supabase."};render()}
 }
 const vIn=id=>{const el=document.getElementById(id);return el?el.value:""};
@@ -1300,7 +1347,8 @@ const authErr=m=>{S.auth={...(S.auth||{}),err:m,busy:false};render()};
 function vLogin(){
   const A=S.auth||(S.auth={tab:"entrar"});const t=A.tab||"entrar";
   const box=(body)=>`<div class="login"><div class="lwin"><div class="win-h"><span>Mesa de Carteiras · Acesso</span></div><div class="lbody">${body}</div></div></div>`;
-  if(S.mode==="semacesso")return box(`<p><b>${esc(SBC.user&&SBC.user.email)}</b> entrou, mas ainda não está liberado na equipe.</p><p class="muted">Peça para o administrador incluir este e-mail em Ajustes › Equipe. Depois, clique em “Tentar de novo”.</p><div class="fbar"><button class="btn pri" data-act="authRetry">Tentar de novo</button><button class="btn" data-act="sair">Sair</button></div>`);
+  if(S.mode==="restrito")return`<div class="login"><div class="lwin"><div class="lbody"><p><b>Acesso restrito.</b></p><p class="muted">Esta página só abre pelo link de convite enviado pelo administrador. Se você recebeu o convite, abra o link que veio na mensagem.</p></div></div></div>`;
+  if(S.mode==="semacesso")return box(`<p>Você entrou, mas ainda não está liberado na equipe.</p><p class="muted">Peça para o administrador incluir o seu acesso em Ajustes › Equipe. Depois, clique em “Tentar de novo”.</p><div class="fbar"><button class="btn pri" data-act="authRetry">Tentar de novo</button><button class="btn" data-act="sair">Sair</button></div>`);
   if(S.mode==="trocar"){const nm=SBC.user&&SBC.user.user_metadata&&SBC.user.user_metadata.nome;return box(`<div class="pbody"><p class="lead-s">Olá${nm?", <b>"+esc(nomeB(String(nm).split(" ")[0]))+"</b>":""}!</p>
    <p>Você entrou com uma senha definida pelo administrador. <b>Quer criar uma senha só sua?</b> Assim só você sabe a senha.</p>${A.err?`<div class="warn-box">${esc(A.err)}</div>`:""}
    <form id="fPrimeira" class="form"><label class="fl">Nova senha (mínimo 8 caracteres)<input class="inp" id="au_s1" type="password" autocomplete="new-password"></label><label class="fl">Repita a nova senha<input class="inp" id="au_s2" type="password" autocomplete="new-password"></label>
@@ -1324,7 +1372,7 @@ async function authSubmit(id){
   const busy=()=>{S.auth={...S.auth,busy:true,err:"",msg:""};render()};
   try{
     if(id==="fEntrar"){const email=vIn("au_email").trim().toLowerCase(),senha=vIn("au_senha");if(!emailOk(email)||!senha)return authErr("Informe o e-mail e a senha.");
-      S.auth={...A,email};busy();const{data,error}=await cli.auth.signInWithPassword({email,password:senha});if(!error)marcarLoginDia();
+      S.auth={...A,email};busy();const{data,error}=await cli.auth.signInWithPassword({email,password:senha});if(!error){marcarLoginDia();conviteMarcar()}
       if(error){if(/invalid login credentials/i.test(String(error.message))){let r=null;try{const x=await cli.rpc("senha_errada",{p_email:email});if(!x.error)r=x.data}catch(e){}
           if(r===0)return authErr("Senha errada pela 3ª vez: seu acesso foi bloqueado. Peça a um administrador para liberar.");
           if(r>0)return authErr("E-mail ou senha incorretos. "+(r===1?"Resta 1 tentativa":"Restam "+r+" tentativas")+" antes de o acesso ser bloqueado.")}
@@ -1348,7 +1396,7 @@ function openRedefinir(email){D={kind:"redef",email};const m=(SBC.membros||[]).f
    `<button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="rdSalvar">Redefinir senha</button>`)}
 async function rdSalvar(){const email=D.email,senha=vIn("rd_senha"),btn=$('[data-act="rdSalvar"]');if(senha.length<8){$("#rd_err").textContent="A senha precisa ter pelo menos 8 caracteres.";return}
   btn.disabled=true;btn.textContent="Redefinindo…";
-  try{await redefinirSenha(email,senha);const txt="Site: "+location.origin+location.pathname+"\nE-mail: "+email+"\nSenha provisória: "+senha;
+  try{await redefinirSenha(email,senha);let link=location.origin+location.pathname;try{const cv=await conviteDe(email,true);link=linkConvite(cv.codigo)}catch(e){}const txt="Link de acesso (convite): "+link+"\nE-mail: "+email+"\nSenha provisória: "+senha;
     drawer("Senha redefinida",`<p>Passe os dados abaixo para a pessoa por mensagem direta:</p><pre class="pre">${esc(txt)}</pre><button class="btn pri" data-act="copyTxt" data-t="${esc(txt)}">Copiar</button><p class="hint">Quando ela entrar com essa senha, o site pergunta se ela quer criar uma senha própria.</p>`,`<button class="btn" data-act="close">Fechar</button>`)}
   catch(e){const m=String(e&&e.message||e);$("#rd_err").textContent=/admin_redefinir_senha|function/i.test(m)&&/not|não|find|exist/i.test(m)?"Falta rodar no Supabase o código da função admin_redefinir_senha (está no setup.sql).":m;btn.disabled=false;btn.textContent="Redefinir senha"}}
 async function authReenviar(){const A=S.auth||{};try{const r=await SBC.cli.auth.resetPasswordForEmail(A.email);if(r&&r.error)return authErr(trErr(r.error));S.auth={...A,err:"",msg:"Código reenviado para "+A.email+"."};render()}catch(e){authErr(trErr(e))}}
@@ -1367,7 +1415,8 @@ async function membroAdd(){
     const c=SBC.conf();const tmp=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"mesa-criar-acesso"}});
     const{data,error}=await tmp.auth.signUp({email,password:senha,options:{data:{nome,trocar_senha:true}}});if(error)throw error;
     const ja=data&&data.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0;
-    await membrosRecarregar();const txt="Site: "+location.origin+location.pathname+"\nE-mail: "+email+"\nSenha provisória: "+senha;
+    let link=location.origin+location.pathname;try{const cv=await conviteDe(email,true);link=linkConvite(cv.codigo)}catch(e){}
+    await membrosRecarregar();const txt="Link de acesso (convite): "+link+"\nE-mail: "+email+"\nSenha provisória: "+senha;
     if(ja){openRedefinir(email);const f=$("#rd_senha");if(f)f.value=senha;const p0=$(".win-b p");if(p0)p0.insertAdjacentHTML("beforebegin",'<div class="warn-box">Este e-mail já tinha acesso. Se quiser, redefina a senha dela com a senha provisória abaixo.</div>');return}
     drawer("Acesso criado",
      `<p>Acesso criado para <b>${esc(nome)}</b>. Passe estes dados para a pessoa por mensagem direta:</p><pre class="pre">${esc(txt)}</pre><button class="btn pri" data-act="copyTxt" data-t="${esc(txt)}">Copiar</button><p class="hint">No primeiro acesso o site pede para ela trocar a senha provisória por uma senha própria.</p>`,`<button class="btn" data-act="close">Fechar</button>`);
@@ -1423,7 +1472,7 @@ async function backupAplicar(){
 function vEquipeHist(){
   if(store.kind!=="sb")return"";const adm=SBC.eu&&SBC.eu.admin;const H=SBC.hist;
   return`${adm?`<fieldset class="box"><legend>Equipe · criar e gerenciar acessos (${SBC.membros.length})</legend><div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>E-mail</th><th>Nome</th><th>Administrador</th><th>Situação</th><th>Liberado em</th><th></th></tr></thead><tbody>
-    ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${adm?`<input class="inp sm" data-mbnome="${esc(m.email)}" value="${esc(m.nome||"")}" title="Nome igual ao da coluna Assistente da base" style="min-width:150px">`:esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td>${situacaoAcesso(m,adm&&!eu)}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td class="nw">${adm&&!eu?`<button class="btn sm" data-act="rdAbrir" data-v="${esc(m.email)}">Redefinir senha</button> `+delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
+    ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${adm?`<input class="inp sm" data-mbnome="${esc(m.email)}" value="${esc(m.nome||"")}" title="Nome igual ao da coluna Assistente da base" style="min-width:150px">`:esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td>${situacaoAcesso(m,adm&&!eu)}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td class="nw">${adm&&!eu?`<button class="btn sm" data-act="convCopiar" data-v="${esc(m.email)}">Copiar link de convite</button> <button class="btn sm" data-act="rdAbrir" data-v="${esc(m.email)}">Redefinir senha</button> `+delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
     <div class="fgrid" style="margin-top:8px"><label class="fl">Nome<input class="inp" id="mb_nome"></label><label class="fl">E-mail<input class="inp" id="mb_email" type="email"></label>
      <label class="fl">Senha provisória<span class="fbar" style="margin:0"><input class="inp mono" id="mb_senha" value="${esc(senhaProvisoria())}" style="max-width:150px"><button class="btn sm" data-act="mbGerar" type="button">gerar outra</button></span></label>
      <label class="ck"><input type="checkbox" id="mb_admin"> administrador</label><button class="btn pri" data-act="mbAdd">Criar acesso</button></div>
@@ -1473,23 +1522,24 @@ function render(){
     if(!todos&&S.view==="geral"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}}
   $$(".tab").forEach(t=>{const eq=t.classList.contains("eq");t.hidden=todos?!eq:eq;
     const on=eq?(S.view==="geral"&&(S.gSub||"pesq")===t.dataset.g):t.dataset.v===S.view;if(on)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
-  $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"?"Aguardando acesso":"Conectando…";
-  const ub=$("#userBox");if(ub){const logado=!["login","semacesso","trocar","loading"].includes(S.mode)&&S.mode;
+  $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||S.mode==="restrito"?"Aguardando acesso":"Conectando…";
+  const vbx=$("#versaoBox");if(vbx){vbx.textContent=VERSAO_NOME;vbx.title="Versão do site — clique para ver as novidades"}
+  const ub=$("#userBox");if(ub){const logado=!["login","semacesso","trocar","loading","restrito"].includes(S.mode)&&S.mode;
     const nome=S.mode==="sb"&&SBC.user?(SBC.eu&&SBC.eu.nome||SBC.user.email):S.mode==="db"&&S.user&&S.user.name?S.user.name:"Você";
     const ini=String(nome).trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"?";
     const adm=ehAdmin(),eq=store.kind==="sb"&&adm;const st=$("#saveMode")?$("#saveMode").textContent:"";
     ub.innerHTML=logado?`<span class="umenu" tabindex="0"><span class="uchip"><span class="uav">${esc(ini)}</span><span class="unm">${esc(nomeB(nome))}</span><span class="ucar">▾</span></span>
-      <span class="udrop"><span class="uhd"><b>${esc(nomeB(nome))}</b>${S.mode==="sb"&&SBC.user?`<span>${esc(SBC.user.email)}</span>`:""}<span>${adm?"Administrador":"Equipe"} · ${esc(st)}</span></span>
-      ${adm?`<button class="uit${S.view==="ajustes"?" on":""}" data-act="go" data-v="ajustes">⚙ Ajustes</button>`:""}${eq?`<button class="uit${S.view==="controle"?" on":""}" data-act="go" data-v="controle">▤ Controle da equipe</button>`:""}
-      ${S.mode==="sb"?`<button class="uit" data-act="trocarSenha">Alterar senha</button><button class="uit" data-act="sair">Sair</button>`:""}</span></span>`:"";}
+      <span class="udrop"><span class="uhd"><b>${esc(nomeB(nome))}</b><span>${adm?"Administrador":"Equipe"} · ${esc(st)}</span></span>
+      ${adm?`<button class="uit${S.view==="ajustes"?" on":""}" data-act="go" data-v="ajustes">⚙ Ajustes</button>`:""}${eq?`<button class="uit" data-act="convMeu">Copiar o meu link de convite</button>`:""}${eq?`<button class="uit${S.view==="controle"?" on":""}" data-act="go" data-v="controle">▤ Controle da equipe</button>`:""}
+      <button class="uit" data-act="novidades">✦ Novidades do site <span class="muted">(${esc(VERSAO_NOME)})</span></button>${S.mode==="sb"?`<button class="uit" data-act="trocarSenha">Alterar senha</button><button class="uit" data-act="sair">Sair</button>`:""}</span></span>`:"";}
   const mm=$("#menuModo");if(mm)mm.textContent=S.visao==="pessoa"?"PESSOA":S.visao==="minha"?"MINHAS":"EQUIPE";
   const vb=$("#visaoBox");if(vb)vb.innerHTML=!["db","sb","local"].includes(S.mode)?"":`Visão: <button class="lk strong" data-act="menu">${S.visao==="pessoa"?"Carteira de "+esc(nomeB(S.visaoPessoa)):S.visao==="minha"?"Minhas carteiras":"Equipe toda"}</button>`;
   const mp=$("#menuPop");if(mp){mp.hidden=!S.menuAberto;if(S.menuAberto)mp.innerHTML=vMenu()}
   const admPag=S.view==="ajustes"||S.view==="controle";
   const escolhendo=S.escolher&&!admPag&&["db","sb","local"].includes(S.mode);
-  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||escolhendo||admPag;
+  const tb=$(".tabs");if(tb)tb.hidden=S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||S.mode==="restrito"||escolhendo||admPag;
   if(escolhendo){$("#main").innerHTML=vEscolha();return}
-  if(S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"){$("#main").innerHTML=vLogin();const f=$("#main input:not([type=hidden])");if(f&&!$("#main").contains(document.activeElement))f.focus();return}
+  if(S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||S.mode==="restrito"){$("#main").innerHTML=vLogin();const f=$("#main input:not([type=hidden])");if(f&&!$("#main").contains(document.activeElement))f.focus();return}
   const u=ultimo();$("#basePos").textContent=u?"Base de "+fd(u)+(S.cfg.regional?" · Regional "+S.cfg.regional:""):"Nenhuma base";
   if(S.mode==="loading"){$("#main").innerHTML='<div class="loading">Carregando…</div>';return}
   const ae=document.activeElement;if(ae&&$("#main").contains(ae)&&(ae.dataset.par!=null||ae.id==="q_texto"||ae.id==="busca"||ae.id==="atuQ"||ae.id==="aQ")&&render.skip){render.skip=false;return}
@@ -1753,7 +1803,7 @@ function vControle(){
    <div class="kp"><small>Itens marcados como feito</small><b>${fN(rows.filter(a=>a.col==="feito").reduce((x,a)=>x+Math.max(0,+(a.info&&a.info.delta)||0),0))}</b></div>
    <div class="kp"><small>Bases importadas</small><b>${fN(rows.filter(a=>a.col==="base").length)}</b></div></div>
   <fieldset class="box"><legend>Atuação de cada pessoa no período</legend><div class="tw"><table class="grid" id="tCtlP"><thead><tr><th>Pessoa</th><th>Último acesso</th><th>Última ação</th><th>Dias com atividade</th><th>Anotações</th><th>Cedentes anotados</th><th>Chamados abertos</th><th>Chamados atualizados</th><th>Feitos marcados</th><th>Bases importadas</th><th>Pareceres</th><th>Pendências salvas</th></tr></thead>
-   <tbody>${pessoas.map(o=>`<tr class="click" data-act="ctlPessoa" data-v="${esc(o.email)}"><td class="ced"><b>${esc(nomeDe(o.email))}</b>${o.admin?' <span class="st info">adm</span>':""}<div class="sub">${esc(o.email)}</div></td><td class="num">${hora(o.acesso)}</td><td class="num">${hora(o.ult)}</td><td class="r">${n(o.dias&&o.dias.size)}</td><td class="r">${n(o.anot)}</td><td class="r">${n(o.ceds&&o.ceds.size)}</td><td class="r">${n(o.chN)}</td><td class="r">${n(o.chU)}</td><td class="r">${n(o.feito)}</td><td class="r">${n(o.base)}</td><td class="r">${n(o.par)}</td><td class="r">${n(o.qp)}</td></tr>`).join("")}</tbody></table></div>
+   <tbody>${pessoas.map(o=>`<tr class="click" data-act="ctlPessoa" data-v="${esc(o.email)}"><td class="ced"><b>${esc(nomeDe(o.email))}</b>${o.admin?' <span class="st info">adm</span>':""}</td><td class="num">${hora(o.acesso)}</td><td class="num">${hora(o.ult)}</td><td class="r">${n(o.dias&&o.dias.size)}</td><td class="r">${n(o.anot)}</td><td class="r">${n(o.ceds&&o.ceds.size)}</td><td class="r">${n(o.chN)}</td><td class="r">${n(o.chU)}</td><td class="r">${n(o.feito)}</td><td class="r">${n(o.base)}</td><td class="r">${n(o.par)}</td><td class="r">${n(o.qp)}</td></tr>`).join("")}</tbody></table></div>
    <p class="foot">Clique numa pessoa para ver só a linha do tempo dela. <button class="lk" data-act="copyTbl" data-id="tCtlP">Copiar tabela</button></p></fieldset>
   <fieldset class="box"><legend>Como estão as carteiras de cada responsável <span class="cnt">base de ${fd(ultimo())}</span></legend><div class="tw"><table class="grid" id="tCtlR"><thead><tr><th>Responsável</th><th>Cedentes</th><th>Valor aberto</th><th>Índice</th><th>Situação</th><th>Faltam p/ meta</th><th>C99</th><th>Tranche em excesso</th><th>Anotação em dia</th><th>Chamados em aberto</th><th>Atuados na semana</th></tr></thead>
    <tbody>${resp.map(o=>{const ind=o.v?o.cv/o.v:null,cob=o.ced?o.emDia/o.ced:0;return`<tr><td class="ced"><b>${esc(nomeB(o.nome))}</b><div style="margin-top:4px"><button class="btn sm pri" data-act="verPessoa" data-v="${esc(o.nome)}">Ver carteira ›</button></div></td><td class="r num">${o.ced}</td><td class="r num">${mk(o.v)}</td><td><b class="num">${pc(ind)}</b>${meter(ind,null)}</td>
@@ -2467,6 +2517,9 @@ document.addEventListener("click",async e=>{
     case"mbAdd":membroAdd();break;
     case"manterSenha":manterSenha();break;
     case"rdAbrir":openRedefinir(el.dataset.v);break;
+    case"convCopiar":copiarConvite(el.dataset.v);break;
+    case"novidades":if(document.activeElement)document.activeElement.blur();mostrarNovidades(NOVIDADES.slice(0,4),false);break;
+    case"convMeu":if(SBC.user)copiarConvite(SBC.user.email.toLowerCase());break;
     case"gDash":geralBaixarDash();break;
     case"gSub":S.gSub=el.dataset.v;render();break;
     case"gSacAll":S.gSacAll=!S.gSacAll;render();break;
