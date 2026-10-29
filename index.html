@@ -979,40 +979,48 @@ const Qprof=(function(){
   /* planilha no modelo do usuário (xlsx-js-style) */
   function planilha(A,XLSX){
     const c=A.c,wb=XLSX.utils.book_new();
-    const thin={style:"thin",color:{rgb:"9E9E9E"}};const B={top:thin,bottom:thin,left:thin,right:thin};
-    const H={font:{bold:true,color:{rgb:"1B3A1F"}},fill:{fgColor:{rgb:"C6EFCE"}},border:B,alignment:{horizontal:"center",vertical:"center",wrapText:true}};
-    const Cc={border:B};const Cm={border:B,numFmt:'"R$" #,##0.00'};const Cd={border:B,numFmt:"dd/mm/yyyy"};
-    const RED={font:{bold:true,color:{rgb:"C00000"}}};
-    const T={font:{bold:true},fill:{fgColor:{rgb:"E2EFDA"}},border:B};
+    const thin={style:"thin",color:{rgb:"000000"}};const B={top:thin,bottom:thin,left:thin,right:thin};
+    const VERDE="C6EFCE",CENTRO={horizontal:"center",vertical:"center"};
+    const H={font:{bold:true},fill:{fgColor:{rgb:VERDE}},border:B,alignment:{...CENTRO,wrapText:true}};
+    const Cc={border:B,alignment:CENTRO};const MOEDA='"R$" #,##0.00';const Cm={border:B,numFmt:MOEDA,alignment:{horizontal:"right"}};const Cd={border:B,numFmt:"dd/mm/yyyy",alignment:CENTRO};
+    const RED={color:{rgb:"FF0000"}};const red=o=>({...o,font:{...(o.font||{}),...RED}});
+    const T={font:{bold:true},fill:{fgColor:{rgb:VERDE}},border:B,alignment:CENTRO};
+    /* linha Total: só o contorno do retângulo, sem riscos por dentro */
+    const linhaTotal=(n,ix,s)=>({...s,border:{top:thin,bottom:thin,...(ix===0?{left:thin}:{}),...(ix===n-1?{right:thin}:{})}});
     const v=(r,i)=>i>=0?r[i]:"";
     const dt=x=>{const d=toDate(x);return d||(x==null?"":x)};
+    const txt=x=>{if(x==null)return"";if(x instanceof Date){const d=x;return`${d.getDate()}/${d.getMonth()+1}`}return String(x).trim()};
     const usados=new Set();
     const nomeAba=s=>{let n=String(s).replace(/[\\\/\?\*\[\]:]/g," ").slice(0,31).trim()||"Aba";let k=n,i=2;while(usados.has(k.toUpperCase())){k=n.slice(0,28)+" "+i++}usados.add(k.toUpperCase());return k};
-    const cell=(val,s)=>({v:val==null?"":val,t:val instanceof Date?"d":typeof val==="number"?"n":"s",s});
+    const cell=(val,s,forceS)=>({v:val==null?"":val,t:forceS?"s":val instanceof Date?"d":typeof val==="number"?"n":"s",s});
     const pend=A.grupos.filter(g=>g.motivo&&!g.opdia&&!isOK(g.motivo));
     pend.forEach(g=>{
       const u=norm(g.motivo),fones=/DIFICULDADE|NÃO ATENDE|NAO ATENDE|^NA$/.test(u),nada=/NADA CONSTA/.test(u),c99=u.startsWith("C99");
       const head=["Nota Fiscal","Rótulo","Cod. Sacado","Sacado",...(fones?["Fone1","Fone2","Fone3"]:[]),"Status Checagem","Vlr. Aberto","Emissão NFe",...(nada?["Atraso"]:[]),"Venc. Orig."];
-      const aoa=[head.map(h=>cell(h,H))];
-      g.itens.forEach(i=>{const r=i.r;const st=c99?{...Cc,...RED}:Cc;const sm=c99?{...Cm,...RED}:Cm;const sd=c99?{...Cd,...RED}:Cd;
-        const em=dt(v(r,c.emis));
-        aoa.push([cell(v(r,c.nf),st),cell(v(r,c.rot),st),cell(v(r,c.cods),st),cell(v(r,c.sac),st),
-          ...(fones?[cell(v(r,c.f1>=0?c.f1:c.fone),st),cell(v(r,c.f2),st),cell(v(r,c.cel),st)]:[]),
-          cell(i.motivo,st),cell(i.valor,sm),cell(em,sd),...(nada?[cell(em instanceof Date?Math.round((A.hoje-em)/864e5):"",st)]:[]),cell(dt(v(r,c.venc)),sd)]);
-      });
-      const vi=head.indexOf("Vlr. Aberto");
-      aoa.push(head.map((h,ix)=>ix===0?cell("Total",T):ix===vi?cell(g.valor,{...T,numFmt:'"R$" #,##0.00'}):cell("",T)));
-      const ws=XLSX.utils.aoa_to_sheet(aoa);ws["!cols"]=head.map(h=>({wch:h==="Sacado"||h==="Rótulo"?34:h==="Status Checagem"?26:14}));
+      const aoa=[head.map(h=>cell(h,H))];const vi=head.indexOf("Vlr. Aberto"),si=head.indexOf("Status Checagem");
+      g.itens.forEach(i=>{const r=i.r;const em=dt(v(r,c.emis));const nfTxt=i.nfTxt!=null?i.nfTxt:txt(v(r,c.nf));
+        const row=[cell(nfTxt,Cc,true),cell(v(r,c.rot),Cc),cell(v(r,c.cods),Cc),cell(v(r,c.sac),Cc),
+          ...(fones?[cell(v(r,c.f1>=0?c.f1:c.fone),Cc),cell(v(r,c.f2),Cc),cell(v(r,c.cel),Cc)]:[]),
+          cell(i.motivo,c99?red(Cc):Cc),cell(i.valor,Cm),cell(em,Cd),...(nada?[cell(em instanceof Date?Math.round((A.hoje-em)/864e5):"",Cc)]:[]),cell(dt(v(r,c.venc)),Cd)];
+        aoa.push(row)});
+      aoa.push(head.map((h,ix)=>ix===0?cell("Total",linhaTotal(head.length,ix,T)):ix===vi?cell(g.valor,linhaTotal(head.length,ix,{...T,numFmt:MOEDA})):cell("",linhaTotal(head.length,ix,T))));
+      const ws=XLSX.utils.aoa_to_sheet(aoa);const last=aoa.length-1;
+      ws["!merges"]=vi>0?[{s:{r:last,c:0},e:{r:last,c:vi-1}}]:[];
+      ws["!cols"]=head.map(h=>({wch:h==="Sacado"?34:h==="Rótulo"?32:h==="Status Checagem"?Math.max(22,Math.min(48,String(g.motivo).length+2)):h==="Vlr. Aberto"?14:12}));
+      ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:last-1,c:head.length-1}})};
       XLSX.utils.book_append_sheet(wb,ws,nomeAba(g.motivo));
     });
-    // STATUS CHECAGEM
-    const tit=(A.tranche?`${A.cedNome||""} TRANCHE ${A.cedente||""}`:`${A.cedNome||""} ${A.cedNome&&A.cedente?"– ":""}${A.cedente||""}`).trim()||"STATUS CHECAGEM";
-    const S=[[cell(tit,{font:{bold:true,sz:14}})],[],[cell("Status Checagem",H),cell("Vlr Aberto",H),cell("%",H)]];
-    A.grupos.forEach(g=>{const red=norm(g.motivo).startsWith("C99");const st=red?{...Cc,...RED}:Cc;
-      S.push([cell(g.rotulo,st),cell(g.valor,red?{...Cm,...RED}:Cm),cell(A.total?g.valor/A.total:0,{...st,numFmt:"0.0%"})])});
-    S.push([cell("Total",T),cell(A.total,{...T,numFmt:'"R$" #,##0.00'}),cell(1,{...T,numFmt:"0%"})]);
-    if(!A.tranche){S.push([]);S.push([cell("Confirmação da Carteira",H),cell(A.confirmacao,{...Cc,numFmt:"0.0%",font:{bold:true}})])}
-    const ws=XLSX.utils.aoa_to_sheet(S);ws["!cols"]=[{wch:40},{wch:18},{wch:10}];ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:2}}];
+    // STATUS CHECAGEM (título em cima, Confirmação da Carteira ao lado, no topo)
+    const rots=[...new Set(A.itens.map(i=>String(v(i.r,c.rot)||"").trim()).filter(Boolean))];
+    const tit=[A.cedNome||A.cedente||"",A.tranche?"TRANCHE":"RISCO",...rots].filter(Boolean).join(" - ")||"STATUS CHECAGEM";
+    const PCT='[<0.01]0.0%;0%';
+    const S=[[cell(tit,{...H,font:{bold:true,sz:12}}),cell("",H),cell("",H),cell(""),A.tranche?cell(""):cell("Confirmação da Carteira",H)],
+             [cell("Status Checagem",H),cell("Vlr Aberto",H),cell("%",H),cell(""),A.tranche?cell(""):cell(A.confirmacao,{...H,numFmt:"0%"})]];
+    A.grupos.forEach(g=>{const r=norm(g.motivo).startsWith("C99");
+      S.push([cell(g.rotulo,r?red(Cc):Cc),cell(g.valor,r?red(Cm):Cm),cell(A.total?g.valor/A.total:0,{...(r?red(Cc):Cc),numFmt:PCT})])});
+    S.push([cell("Total",linhaTotal(3,0,T)),cell(A.total,linhaTotal(3,1,{...T,numFmt:MOEDA})),cell(1,linhaTotal(3,2,{...T,numFmt:"0%"}))]);
+    const ws=XLSX.utils.aoa_to_sheet(S);ws["!cols"]=[{wch:46},{wch:16},{wch:8},{wch:6},{wch:26}];ws["!merges"]=[{s:{r:0,c:0},e:{r:0,c:2}}];
+    ws["!autofilter"]={ref:`A2:C${S.length-1}`};
     XLSX.utils.book_append_sheet(wb,ws,nomeAba("STATUS CHECAGEM"));
     // base original
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([A.hdr,...A.rows]),nomeAba("BASE"));
@@ -1192,7 +1200,9 @@ async function lerPlanilha(file,aviso){
   const X=await XLSXlib();return lerPlanilhaCorpo(X,typeof buf==="string"?buf:await file.arrayBuffer(),ABAS_QUERO);
 }
 const pausa=()=>new Promise(r=>setTimeout(r,0));
-async function lerArquivo(file,dates){const X=await XLSXlib();const buf=await file.arrayBuffer();return X.read(buf,{type:"array",cellDates:!!dates})}
+async function lerArquivo(file,dates){const X=await XLSXlib();const buf=await file.arrayBuffer();
+  if(/\.(csv|txt)$/i.test(file.name)){let t;try{t=new TextDecoder("utf-8",{fatal:true}).decode(buf)}catch(e){t=new TextDecoder("windows-1252").decode(buf)}return X.read(t.replace(/^\uFEFF/,""),{type:"string",raw:true})}
+  return X.read(buf,{type:"array",cellDates:!!dates})}
 async function baixar(nome,data,tipo){
   const dl=window.claude&&window.claude.use?await window.claude.use("downloads").catch(()=>null):null;
   if(dl){try{await dl.save({filename:nome,data});toast("Arquivo pronto")}catch(e){if(e&&e.code!=="declined")toast("Não foi possível baixar ("+(e.code||"erro")+").")}return}
@@ -2533,8 +2543,12 @@ document.addEventListener("change",async e=>{
   if(t.dataset.mbnome){membroNome(t.dataset.mbnome,t.value.trim());return}
   if(t.dataset.ftipo!=null){D.files[+t.dataset.ftipo].tipo=t.value;drawImport()}
   if(t.id==="refFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);const ks=Object.keys(pl.sheets);await importarReferencias(n=>{const k=ks.find(s=>s.toUpperCase()===n);return k?pl.sheets[k]:null})}catch(err){toast(err.message)}t.value=""}
-  if(t.id==="q_file"&&t.files[0]){try{const wb=await lerArquivo(t.files[0],true);let b=null;for(const n of wb.SheetNames){const aoa=window.XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null,blankrows:false});
-      for(let i=0;i<Math.min(15,aoa.length);i++){const H=(aoa[i]||[]).map(x=>String(x||"").trim().toUpperCase());if(H.includes("VLR. ABERTO")&&(H.includes("MOTIVO ENTREGA")||H.includes("STATUS CHECAGEM"))){b={hdr:aoa[i],rows:aoa.slice(i+1).filter(r=>r&&r.some(v=>v!=null&&v!==""))};break}}if(b)break}
+  if(t.id==="q_file"&&t.files[0]){try{const wb=await lerArquivo(t.files[0],true);let b=null;for(const n of wb.SheetNames){const ws=wb.Sheets[n];const aoa=window.XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true});
+      for(let i=0;i<Math.min(15,aoa.length);i++){const H=(aoa[i]||[]).map(x=>String(x||"").trim().toUpperCase());if(H.includes("VLR. ABERTO")&&(H.includes("MOTIVO ENTREGA")||H.includes("STATUS CHECAGEM"))){
+        /* Nota Fiscal (Seu Número) como aparece no arquivo, sem virar data */
+        const W=window.XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:null,blankrows:true});const nfI=H.findIndex(h=>h==="SEU NÚMERO"||h==="SEU NUMERO"||h==="NOTA FISCAL");
+        const rows=[];for(let k=i+1;k<aoa.length;k++){const r=aoa[k];if(!r||!r.some(v=>v!=null&&v!==""))continue;if(nfI>=0&&W[k]&&W[k][nfI]!=null)r[nfI]=String(W[k][nfI]).trim();rows.push(r)}
+        b={hdr:aoa[i],rows};break}}if(b)break}
     if(!b)throw new Error("Não achei um cabeçalho com Vlr. Aberto e Motivo Entrega no arquivo.");qIniciar(b.hdr,b.rows,t.files[0].name)}catch(err){toast(err.message)}t.value=""}
   if(t.id==="q_ced"&&t.value){const b=S.raw.cart;const cc=Engine.mapCols(b.hdr);qIniciar(b.hdr,b.rows.filter(r=>String(r[cc.cod])===t.value),"base do dia")}
   if(S.Q&&t.dataset.qcat!=null){S.Q.opt.cat[S.Q.A.grupos[+t.dataset.qcat].rotulo]=t.value;S.Q.editado=false;render()}
