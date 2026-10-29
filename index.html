@@ -1166,7 +1166,7 @@ const XLSX_URL="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundl
 const ABAS_QUERO=["CHAMADOS","BASE CARTEIRAS","BASE - TRANCHE","DATA DA BASE","RISCO PRINCING","LIMITE - TRANCHE","CARACTERISTICA","METAS ESPECIAIS","METAS TRANCHE"];
 function lerPlanilhaCorpo(X,buf,want){
   const tp=typeof buf==="string"?"string":"array";const meta=X.read(buf,{type:tp,bookSheets:true,raw:tp==="string"});const names=meta.SheetNames,up=names.map(n=>n.toUpperCase());
-  let pick=names.filter((n,i)=>want.includes(up[i]));if(!pick.some(n=>/^BASE /i.test(n)))pick=names.slice(0,3);
+  let pick=names.filter((n,i)=>want.includes(up[i])||/CHAMADO/.test(up[i]));if(!pick.some(n=>/^BASE /i.test(n)))pick=names.slice(0,3);
   const wb=X.read(buf,{type:tp,raw:tp==="string",sheets:pick,dense:true,cellStyles:false,cellHTML:false,cellText:false,cellFormula:false,cellNF:false});
   const sheets={};pick.forEach(n=>{const ws=wb.Sheets[n];if(ws)sheets[n]=X.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:false})});
   return{names,sheets};
@@ -1239,12 +1239,21 @@ const seg=(act,cur,opts)=>`<span class="seg">${opts.map(([k,t])=>`<button data-a
 const SBC={cli:null,user:null,eu:null,membros:[],hist:null,
   conf(){if(!window.supabase||!window.supabase.createClient)return null;let c=null;try{c=window.MESA_SB&&window.MESA_SB.url?window.MESA_SB:JSON.parse(localStorage.getItem("mesa_sb")||"null")}catch(e){}if(c&&c.url)c={...c,url:String(c.url).trim().replace(/\/(rest|auth)\/v1\/?$/,"").replace(/\/+$/,"")};return c&&c.url&&c.key?c:null}};
 let sbT=null;function sbRender(){clearTimeout(sbT);sbT=setTimeout(render,120)}
-async function sbIniciar(){
+let vigiando=false;
+async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
   const c=SBC.conf();SBC.cli=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true}});
   SBC.cli.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"){SBC.user=null;SBC.eu=null;S.mode="login";S.auth={tab:"entrar"};render()}});
   let ses=null;try{const{data}=await SBC.cli.auth.getSession();ses=data&&data.session}catch(e){}
+  if(ses&&loginDia()!==diaSP()){await sessaoExpirada();return}
   if(ses)await sbEntrar(ses.user);else{S.mode="login";render()}
 }
+/* login vale só até a meia-noite (horário de Brasília): no dia seguinte, todo mundo entra de novo */
+const diaSP=()=>{try{return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}catch(e){return today()}};
+const loginDia=()=>{try{return localStorage.getItem("mesa_login_dia")||""}catch(e){return""}};
+const marcarLoginDia=()=>{try{localStorage.setItem("mesa_login_dia",diaSP())}catch(e){}};
+async function sessaoExpirada(){SBC.jaEntrou=false;try{sessionStorage.removeItem("mesa_escolheu");localStorage.removeItem("mesa_login_dia")}catch(e){}S.escolher=true;if(D)closeDrawer();
+  try{if(SBC.cli)await SBC.cli.auth.signOut()}catch(e){}SBC.user=null;SBC.eu=null;S.mode="login";S.auth={tab:"entrar",msg:"Sua sessão terminou à meia-noite. Entre de novo para continuar."};render()}
+function vigiarMeiaNoite(){const ck=()=>{if(store.kind==="sb"&&SBC.user&&loginDia()!==diaSP())sessaoExpirada()};setInterval(ck,60000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)ck()});window.addEventListener("focus",ck)}
 async function sbTodos(q){let out=[],from=0;for(;;){const{data,error}=await q().range(from,from+999);if(error)throw error;out=out.concat(data||[]);if(!data||data.length<1000)break;from+=1000}return out}
 async function sbEntrar(user){
   SBC.user=user;S.mode="loading";render();
@@ -1303,7 +1312,7 @@ async function authSubmit(id){
   const busy=()=>{S.auth={...S.auth,busy:true,err:"",msg:""};render()};
   try{
     if(id==="fEntrar"){const email=vIn("au_email").trim().toLowerCase(),senha=vIn("au_senha");if(!emailOk(email)||!senha)return authErr("Informe o e-mail e a senha.");
-      S.auth={...A,email};busy();const{data,error}=await cli.auth.signInWithPassword({email,password:senha});
+      S.auth={...A,email};busy();const{data,error}=await cli.auth.signInWithPassword({email,password:senha});if(!error)marcarLoginDia();
       if(error){if(/invalid login credentials/i.test(String(error.message))){let r=null;try{const x=await cli.rpc("senha_errada",{p_email:email});if(!x.error)r=x.data}catch(e){}
           if(r===0)return authErr("Senha errada pela 3ª vez: seu acesso foi bloqueado. Peça a um administrador para liberar.");
           if(r>0)return authErr("E-mail ou senha incorretos. "+(r===1?"Resta 1 tentativa":"Restam "+r+" tentativas")+" antes de o acesso ser bloqueado.")}
@@ -1315,7 +1324,7 @@ async function authSubmit(id){
     else if(id==="fEsqueci"){const email=vIn("au_email").trim().toLowerCase();if(!emailOk(email))return authErr("E-mail inválido.");S.auth={...A,email};busy();
       const{error}=await cli.auth.resetPasswordForEmail(email);if(error)return authErr(trErr(error));S.auth={tab:"esqueci",step:1,email};render()}
     else if(id==="fNova"){const token=vIn("au_cod").replace(/\D/g,""),s1=vIn("au_s1"),s2=vIn("au_s2");if(token.length<6)return authErr("Digite o código de 6 dígitos que chegou no e-mail.");const e=senhaOk(s1,s2);if(e)return authErr(e);busy();
-      const v=await cli.auth.verifyOtp({email:A.email,token,type:"recovery"});if(v.error)return authErr(trErr(v.error));
+      const v=await cli.auth.verifyOtp({email:A.email,token,type:"recovery"});if(v.error)return authErr(trErr(v.error));marcarLoginDia();
       const u=await cli.auth.updateUser({password:s1});if(u.error)return authErr(trErr(u.error));S.auth={tab:"entrar"};toast("Senha alterada");await sbEntrar(v.data.user)}
   }catch(e){authErr(trErr(e))}
 }
@@ -1951,10 +1960,14 @@ function vChamados(){
   const tr=all.filter(c=>c.resposta).map(c=>bdays(c.abertura,c.resposta));const media=tr.length?tr.reduce((a,b)=>a+b,0)/tr.length:null;
   return`<div class="ptitle">Chamados ao comercial<span class="right"><button class="btn pri" data-act="newCh">Novo chamado</button></span></div>
   <fieldset class="box"><legend>Mostrar</legend><div class="fbar">${seg("chF",S.chF,[["abertos","Em aberto"],["fechados","Fechados"],["todos","Todos"]])}<span class="muted">Prazo de resposta: ${prazoCh()} dias úteis (Ajustes)</span></div></fieldset>
-  <div class="tw"><table class="grid" id="tCh"><thead><tr><th>Nº do chamado</th><th>Cedente</th><th>Motivo</th><th>Abertura</th><th>Situação</th><th>D.u. até resposta</th><th>D.u. sem retorno</th><th>Retorno do comercial</th><th>Atualizações</th><th></th></tr></thead>
-   <tbody>${L.map(c=>{const ds=chDiasSem(c);return`<tr><td class="num"><button class="lk" data-act="editCh" data-id="${c.id}">${esc(c.numero)}</button></td>${cedCell(c.cod,nomeCed(c.cod)||"—")}<td>${esc(c.motivo)}</td><td class="num">${fd(c.abertura)}</td><td>${chip(CHL[c.st]||c.st,CHK[c.st])}</td>
-    <td class="r num">${c.resposta?bdays(c.abertura,c.resposta):bdays(c.abertura,today())+"…"}</td><td class="r num ${ds>prazoCh()?"bad-t":""}">${ds??"—"}</td><td class="wrap small">${esc(c.retorno||"")}${c.efetivo?`<div class="sub">efetivo: ${esc(c.efetivo)}</div>`:""}</td><td class="r num">${c.nAtualizacoes||0}${c.ultAtualizacao?`<div class="sub">${fds(c.ultAtualizacao)}</div>`:""}</td>
-    <td>${c.st!=="Fechado"?`<button class="btn sm" data-act="cobrar" data-id="${c.id}">Cobrei hoje</button>`:""}</td></tr>`}).join("")||'<tr><td colspan="10" class="muted">Nenhum chamado.</td></tr>'}</tbody></table></div>
+  <div class="tw"><table class="grid" id="tCh"><thead><tr><th>Nº do chamado</th><th>Cedente</th><th>Motivo</th><th>Abertura</th><th>Situação</th><th>D.u. até resposta</th><th>D.u. sem retorno</th><th>Data da resposta</th><th>Retorno do comercial</th><th>Efetivo?</th><th>Fechamento</th><th>Atualizações</th><th></th></tr></thead>
+   <tbody>${L.map(c=>{const ds=chDiasSem(c);const f=(k,t)=>`data-chf="${k}" data-id="${esc(c.id)}"`;return`<tr><td class="num"><button class="lk" data-act="editCh" data-id="${c.id}">${esc(c.numero)}</button>${c.origem==="planilha"?'<div class="sub">da planilha</div>':""}</td>${cedCell(c.cod,nomeCed(c.cod)||"—")}<td><input class="inp sm" ${f("motivo")} value="${esc(c.motivo||"")}" style="min-width:150px"></td><td><input class="inp sm" type="date" ${f("abertura")} value="${esc(c.abertura||"")}"></td><td>${chip(CHL[c.st]||c.st,CHK[c.st])}</td>
+    <td class="r num">${c.abertura?(c.resposta?bdays(c.abertura,c.resposta):bdays(c.abertura,today())+"…"):"—"}</td><td class="r num ${ds>prazoCh()?"bad-t":""}">${ds??"—"}</td>
+    <td><input class="inp sm" type="date" ${f("resposta")} value="${esc(c.resposta||"")}"></td><td><textarea class="inp sm" rows="1" ${f("retorno")} style="min-width:200px">${esc(c.retorno||"")}</textarea></td>
+    <td><select class="inp sm" ${f("efetivo")}>${["","Sim","Não"].map(o=>`<option value="${o}"${String(c.efetivo||"").toLowerCase()===o.toLowerCase()?" selected":""}>${o||"—"}</option>`).join("")}${c.efetivo&&!["sim","não","nao"].includes(String(c.efetivo).toLowerCase())?`<option selected>${esc(c.efetivo)}</option>`:""}</select></td>
+    <td><input class="inp sm" type="date" ${f("fechamento")} value="${esc(c.fechamento||"")}"></td>
+    <td class="r num">${c.nAtualizacoes||0}${c.ultAtualizacao?`<div class="sub">${fds(c.ultAtualizacao)}</div>`:""}</td>
+    <td class="nw">${c.st!=="Fechado"?`<button class="btn sm" data-act="cobrar" data-id="${c.id}">Cobrei hoje</button> `:""}<button class="btn sm" data-act="editCh" data-id="${c.id}">Editar tudo</button></td></tr>`}).join("")||'<tr><td colspan="13" class="muted">Nenhum chamado.</td></tr>'}</tbody></table></div>
   ${totbar([["Em aberto",all.filter(c=>c.st!=="Fechado").length],["Atrasados",all.filter(c=>c.st==="Atrasado"||c.st==="Atualizado sem retorno").length],["Respondidos p/ atuar",all.filter(c=>c.st==="Respondido"||c.st==="Não efetivo").length],["Fechados",all.filter(c=>c.st==="Fechado").length],["Média até a resposta",media==null?"—":media.toLocaleString("pt-BR",{maximumFractionDigits:1})+" d.u."]])}`;
 }
 
@@ -2218,6 +2231,9 @@ function openCh(id,cod,mot,ret){
    <div class="err" id="h_err"></div></div>`,
    (id?delBtn("ch:"+id,"Excluir","push-left"):"")+`<button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="saveCh">Salvar</button>`);
 }
+async function chCampo(id,campo,val){const c=S.chamados[id];if(!c)return;if(String(c[campo]||"")===val)return;
+  const v={...c,[campo]:val};if((campo==="resposta"||campo==="fechamento")&&val&&v.abertura&&val<v.abertura){toast("A data não pode ser antes da abertura.");render();return}
+  await safe(store.set("chamados",id,v),"Chamado atualizado");render()}
 async function saveCh(){
   const num=$("#h_num").value.trim(),cod=$("#h_cod").value.trim(),ab=$("#h_ab").value,resp=$("#h_resp").value,fech=$("#h_fech").value;
   if(!num){$("#h_err").textContent="Informe o número do chamado.";return}if(!ab){$("#h_err").textContent="Informe a data de abertura.";return}
@@ -2246,7 +2262,7 @@ async function addImportFiles(files){
       const pl=await lerPlanilha(f,aviso);const names=Object.keys(pl.sheets),up=names.map(n=>n.toUpperCase());
       aviso("Organizando os títulos…");await pausa();
       const dn=dataDoNome(f.name);if(dn)$("#i_data").value=dn;
-      {const kc=names.find(n=>n.toUpperCase()==="CHAMADOS");if(kc){const lst=chDaPlanilha(pl.sheets[kc]);if(lst.length){D.chImp=(D.chImp||[]).concat(lst);D.chArq=f.name}}
+      {const kc=names.find(n=>n.toUpperCase()==="CHAMADOS")||names.find(n=>/CHAMADO/i.test(n));if(kc){const lst=chDaPlanilha(pl.sheets[kc]);if(lst.length){D.chImp=(D.chImp||[]).concat(lst);D.chArq=f.name}}
        if(kc&&!names.some(n=>/^BASE /i.test(n)))continue}
       const aoa=n=>pl.sheets[n]||[];
       const raw=n=>{const a=aoa(n);const h=Core.findHeader(a,["Cod. Cedente","Motivo Entrega"]);return h<0?null:{hdr:a[h],rows:a.slice(h+1).filter(r=>r&&r.some(v=>v!=null&&v!==""))}};
@@ -2265,11 +2281,16 @@ async function addImportFiles(files){
   drawImport();
 }
 /* chamados da aba CHAMADOS da planilha */
-function chDaPlanilha(aoa){const h=Core.findHeader(aoa||[],["Nº do chamado"]);if(h<0)return[];const H=aoa[h].map(x=>Core.nrm(x));const ix=n=>H.indexOf(Core.nrm(n));
-  const c={num:ix("Nº do chamado"),cod:ix("Cód. Cedente"),ab:ix("Data de abertura"),resp:ix("Data da resposta"),fech:ix("Data de fechamento"),mot:ix("Motivo do chamado"),ret:ix("Retorno do comercial"),ua:ix("Data da última atualização (nossa)"),ur:ix("Data do último retorno"),ef:ix("Retorno efetivo?"),n:ix("Nº de atualizações")};
-  const dt=v=>{if(v==null||v==="")return"";const n=typeof v==="number"?v:Core.toSerial(v);return n>20000?Core.serialISO(n):""};const tx=i=>i>=0&&aoa[r][i]!=null?String(aoa[r][i]).trim():"";let r;const out=[];
+function chDaPlanilha(aoa){aoa=aoa||[];const N=x=>Core.nrm(x);let h=-1;
+  for(let r=0;r<Math.min(aoa.length,30)&&h<0;r++){const row=aoa[r]||[];if(row.some(v=>/^(n[ºo°]?\.?\s*(do\s*)?)?(chamado|protocolo)$/i.test(String(v==null?"":v).trim())||/numero do chamado|n. do chamado|nº do chamado|n° do chamado/i.test(N(v))))h=r}
+  if(h<0)return[];const H=(aoa[h]||[]).map(x=>N(x));
+  const col=(...res)=>{for(const re of res){const k=H.findIndex(x=>re.test(x));if(k>=0)return k}return -1};
+  const c={num:col(/^n.{0,3}\s*(do )?chamado$/,/^numero do chamado$/,/^chamado$/,/protocolo/),cod:col(/^cod.{0,4}cedente/,/^codigo do cedente/,/^cod\.? ?ced/),ab:col(/abertura/),resp:col(/data da resposta/,/^resposta$/),fech:col(/fechamento/),
+    mot:col(/motivo/),ret:col(/retorno do comercial/,/^retorno$/,/resposta do comercial/),ua:col(/ultima atualizacao/),ur:col(/ultimo retorno/),ef:col(/efetivo/),n:col(/n.{0,3} de atualiza/,/atualizacoes/)};
+  if(c.num<0)return[];
+  const dt=v=>{if(v==null||v==="")return"";const n=typeof v==="number"?v:Core.toSerial(v);return n>20000?Core.serialISO(n):""};let r;const tx=i=>i>=0&&aoa[r][i]!=null?String(aoa[r][i]).trim():"";const out=[];
   for(r=h+1;r<aoa.length;r++){const row=aoa[r];if(!row)continue;const num=tx(c.num);if(!num)continue;
-    out.push({numero:num,cod:String(Core.toInt(row[c.cod])||tx(c.cod)),abertura:dt(row[c.ab]),resposta:dt(row[c.resp]),fechamento:dt(row[c.fech]),motivo:tx(c.mot),retorno:tx(c.ret),ultAtualizacao:dt(row[c.ua]),ultRetorno:dt(row[c.ur]),efetivo:tx(c.ef),nAtualizacoes:c.n>=0&&row[c.n]!=null&&row[c.n]!==""?+row[c.n]||0:null})}
+    out.push({numero:num,cod:c.cod>=0?String(Core.toInt(row[c.cod])||tx(c.cod)):"",abertura:dt(row[c.ab]),resposta:dt(row[c.resp]),fechamento:dt(row[c.fech]),motivo:tx(c.mot),retorno:tx(c.ret),ultAtualizacao:dt(row[c.ua]),ultRetorno:dt(row[c.ur]),efetivo:tx(c.ef),nAtualizacoes:c.n>=0&&row[c.n]!=null&&row[c.n]!==""?+row[c.n]||0:null})}
   return out}
 const chChave=n=>String(n||"").trim().toUpperCase();
 function chResumoImp(){const ex=new Set(Object.values(S.chamados||{}).map(c=>chChave(c.numero)));const L=D.chImp;const novos=L.filter(c=>!ex.has(chChave(c.numero))).length;
@@ -2492,6 +2513,7 @@ document.addEventListener("change",async e=>{
   const t=e.target;
   if(t.dataset.ea&&S.ea){S.ea[t.dataset.ea]=t.value;return}
   if(t.dataset.mbadm){membroAdmin(t.dataset.mbadm,t.checked);return}
+  if(t.dataset.chf&&t.dataset.id){chCampo(t.dataset.id,t.dataset.chf,t.value.trim());return}
   if(t.id==="bkFile"&&t.files[0]){backupLer(t.files[0]);t.value="";return}
   if(t.dataset.fk){setDone(t.dataset.fk,t.dataset.fid,t.checked);return}
   if(t.id==="selDia"){S.dia=t.value;S.cmp=anterior(S.dia);render()}
