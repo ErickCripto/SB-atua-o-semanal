@@ -177,6 +177,7 @@ table.grid{border-collapse:collapse;width:100%}
 .novid-b{padding:12px 18px;max-height:60vh;overflow:auto}.novid-d{font-weight:bold;color:#1F5C4B;margin:6px 0 4px}.novid-v ul{margin:0 0 8px 18px;padding:0}.novid-v li{margin:5px 0;line-height:1.4}
 .novid-f{padding:10px 16px;border-top:1px solid #E3E8E6;text-align:right}
 .vbadge{margin-left:6px;border:1px solid #F0C36D;background:#FFF4DA;color:#8A5A00;font:inherit;font-size:10.5px;font-weight:bold;padding:1px 7px;border-radius:10px;cursor:pointer;vertical-align:middle;text-transform:uppercase;letter-spacing:.03em}.vbadge:hover{background:#FFE9B8}
+.ubeta{display:inline-block;margin-left:4px;font-size:9.5px;font-weight:bold;letter-spacing:.04em;color:#6B3FA0;background:#F1E8FB;border:1px solid #CDB3EC;border-radius:8px;padding:0 5px;vertical-align:middle}
 .umenu{position:relative;display:inline-block;outline:none}
 .uchip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 3px;border:1px solid #9FD0BE;border-radius:18px;background:#fff;cursor:pointer}
 .uav{width:24px;height:24px;border-radius:50%;background:var(--tab1,#1F7A62);color:#fff;font-weight:bold;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
@@ -229,7 +230,7 @@ table.grid{border-collapse:collapse;width:100%}
  <div class="strip">
   <div class="bar"><span class="app">Mesa de Carteiras</span><button class="vbadge" id="versaoBox" data-act="novidades"></button><span class="muted small">Confirmação · Tranche · Chamados · Parecer</span><span class="info"><span id="visaoBox"></span><span id="basePos"></span><b id="saveMode" hidden>Conectando…</b><span id="userBox"></span></span></div>
   <nav class="tabs">
-   <button class="tab eq" data-act="go" data-v="geral" data-g="pesq" data-h="pesquisar" hidden>Pesquisar cedente</button><button class="tab eq" data-act="go" data-v="geral" data-g="down" data-h="dashboard" hidden>Dashboard e planilha</button><button class="tab eq" data-act="go" data-v="geral" data-g="imp" data-h="base" hidden>Colocar a base</button><button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button>
+   <button class="tab eq" data-act="go" data-v="geral" data-g="pesq" data-h="pesquisar" hidden>Pesquisar cedente</button><button class="tab eq" data-act="go" data-v="geral" data-g="down" data-h="dashboard" hidden>Dashboard e planilha</button><button class="tab eq" data-act="go" data-v="geral" data-g="imp" data-h="base" hidden>Colocar a base</button><button class="tab" data-act="go" data-v="atuacao">Atuação</button><button class="tab" data-act="go" data-v="anotacoes">Anotações</button><button class="tab" data-act="go" data-v="carteiras">Carteiras</button><button class="tab so-beta" data-act="go" data-v="faturizados" hidden>VAZIOS</button><button class="tab" data-act="go" data-v="tranche">Tranche</button><button class="tab" data-act="go" data-v="relatorios">Relatórios</button><button class="tab" data-act="go" data-v="chamados">Chamados</button><button class="tab" data-act="go" data-v="parecer">Parecer</button><button class="tab" data-act="go" data-v="qprof">Base para chamados</button>
   </nav>
  </div>
  <main id="main"><div class="loading">Carregando…</div></main>
@@ -1312,6 +1313,10 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 }
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
+ {v:"2026.10.30c",nome:"Beta 1.5",data:"30/10/2026",itens:[
+  {beta:true,texto:"<b>VAZIOS:</b> nova aba em Minha carteira com os títulos de rótulos faturizados, Motivo Entrega vazio e aditivo dentro do prazo da característica do cedente (ex.: D+5)."}]},
+ {v:"2026.10.30b",nome:"Beta 1.4",data:"30/10/2026",itens:[
+  "<b>Beta teste:</b> o administrador pode marcar pessoas como beta teste em Ajustes › Equipe. Funções novas aparecem primeiro para elas, com o selo BETA TESTE; depois de testadas, são liberadas para todos."]},
  {v:"2026.10.30",nome:"Beta 1.3",data:"30/10/2026",itens:[
   "<b>Carteiras:</b> nova coluna Cód. Cedente.",
   "<b>Títulos e sacados pendentes:</b> ao abrir os títulos (pendentes, C99, todos etc.) aparecem todas as colunas da base, na ordem do arquivo, como nos detalhes da Síntese do risco.",
@@ -1337,12 +1342,14 @@ const NOVIDADES=[
   "<b>Segurança:</b> 3 senhas erradas bloqueiam o acesso até um administrador liberar."]}
 ];
 const VERSAO=NOVIDADES[0].v,VERSAO_NOME=NOVIDADES[0].nome;
+/* item de novidade como {texto, beta:true} aparece só para quem é beta teste */
+const novidadesVisiveis=()=>NOVIDADES.map(n=>({...n,itens:n.itens.filter(i=>typeof i==="string"||!i.beta||ehBeta())})).filter(n=>n.itens.length);
 const chaveVista=()=>"mesa_versao_vista_"+String(SBC.user&&SBC.user.email||"local").toLowerCase();
 function novidadesAoEntrar(){let vista="";try{vista=localStorage.getItem(chaveVista())||""}catch(e){}
-  const novas=NOVIDADES.filter(n=>!vista||n.v>vista);if(!vista)novas.splice(1);if(novas.length)mostrarNovidades(novas,true)}
+  const novas=novidadesVisiveis().filter(n=>!vista||n.v>vista);if(!vista)novas.splice(1);if(novas.length)mostrarNovidades(novas,true)}
 function mostrarNovidades(lista,marcar){const el=document.createElement("div");el.className="novid";el.innerHTML=`<div class="novid-w" role="dialog" aria-modal="true" aria-labelledby="novT">
    <div class="novid-h"><b id="novT">O que mudou no site · ${esc(VERSAO_NOME)}</b><button class="lk" data-novok>✕</button></div><div class="novid-b">
-   ${(lista||NOVIDADES).map(n=>`<div class="novid-v"><div class="novid-d">Versão ${esc(n.nome)} <span class="muted" style="font-weight:normal">· ${esc(n.data)}</span></div><ul>${n.itens.map(i=>`<li>${i}</li>`).join("")}</ul></div>`).join("")}</div>
+   ${(lista||NOVIDADES).map(n=>`<div class="novid-v"><div class="novid-d">Versão ${esc(n.nome)} <span class="muted" style="font-weight:normal">· ${esc(n.data)}</span></div><ul>${n.itens.map(i=>typeof i==="string"?`<li>${i}</li>`:`<li><span class="ubeta">BETA TESTE</span> ${i.texto}</li>`).join("")}</ul></div>`).join("")}</div>
    <div class="novid-f"><button class="btn pri" data-novok>Entendi</button></div></div>`;
   const fechar=()=>{try{localStorage.setItem(chaveVista(),VERSAO)}catch(e){}el.remove()};
   el.addEventListener("click",e=>{if(e.target.closest("[data-novok]")||e.target===el)fechar()});document.body.appendChild(el);const b=el.querySelector(".novid-f .btn");if(b)b.focus()}
@@ -1488,6 +1495,9 @@ async function liberarAcesso(email,btn){if(btn){btn.disabled=true;btn.textConten
   const m=(SBC.membros||[]).find(x=>x.email===email);toast("Acesso de "+(m&&m.nome?nomeB(m.nome):email)+" liberado. Ela já pode entrar com a senha de antes.");membrosRecarregar()}
 async function membroDel(email){const{error}=await SBC.cli.from("membros").delete().eq("email",email);if(error){toast("Não foi possível remover ("+error.message+").");return}toast("Acesso removido");membrosRecarregar()}
 async function membroNome(email,nome){if(!nome){toast("O nome não pode ficar vazio.");membrosRecarregar();return}const{error}=await SBC.cli.from("membros").update({nome}).eq("email",email);if(error){toast(error.message);return}toast("Nome salvo");await membrosRecarregar();if(SBC.user&&email.toLowerCase()===SBC.user.email.toLowerCase())SBC.eu={...SBC.eu,nome}}
+async function membroBeta(email,on){const{error}=await SBC.cli.from("membros").update({beta:on}).eq("email",email);
+  if(error){toast(/beta/i.test(error.message)?"Falta rodar no Supabase o código do beta teste (beta-teste.sql).":error.message);membrosRecarregar();return}
+  toast(on?"Marcado como beta teste":"Tirado do beta teste");await membrosRecarregar();if(SBC.user&&email.toLowerCase()===SBC.user.email.toLowerCase())SBC.eu={...SBC.eu,beta:on};render()}
 async function membroAdmin(email,on){const{error}=await SBC.cli.from("membros").update({admin:on}).eq("email",email);if(error){toast(error.message);return}membrosRecarregar()}
 async function histCarregar(){const{data,error}=await SBC.cli.from("historico").select("*").order("alterado_em",{ascending:false}).limit(150);if(error){toast(error.message);return}SBC.hist=data||[];render()}
 function histRotulo(h){const d=h.data||{};if(h.col==="anot")return"Anotação · "+nomeB(nomeCed(h.id)||h.id);if(h.col==="chamados")return"Chamado "+(d.numero||"");if(h.col==="parecer")return"Parecer da semana de "+fd(h.id);if(h.col==="reg")return"Posição de "+fd(h.id);if(h.col==="cfg")return"Parâmetros ("+h.id+")";if(h.col==="feito")return"Marcações de feito";if(h.col==="caract")return"Característica · "+h.id;if(h.col==="qprof")return"Pendência salva · "+nomeB(d.cedente||"");return h.col+" · "+h.id}
@@ -1523,8 +1533,8 @@ async function backupAplicar(){
 }
 function vEquipeHist(){
   if(store.kind!=="sb")return"";const adm=SBC.eu&&SBC.eu.admin;const H=SBC.hist;
-  return`${adm?`<fieldset class="box"><legend>Equipe · criar e gerenciar acessos (${SBC.membros.length})</legend><div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>E-mail</th><th>Nome</th><th>Administrador</th><th>Situação</th><th>Liberado em</th><th></th></tr></thead><tbody>
-    ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${adm?`<input class="inp sm" data-mbnome="${esc(m.email)}" value="${esc(m.nome||"")}" title="Nome igual ao da coluna Assistente da base" style="min-width:150px">`:esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td>${situacaoAcesso(m,adm&&!eu)}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td class="nw">${adm&&!eu?`<button class="btn sm" data-act="convCopiar" data-v="${esc(m.email)}">Copiar link de convite</button> <button class="btn sm" data-act="rdAbrir" data-v="${esc(m.email)}">Redefinir senha</button> `+delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
+  return`${adm?`<fieldset class="box"><legend>Equipe · criar e gerenciar acessos (${SBC.membros.length})</legend><div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>E-mail</th><th>Nome</th><th>Administrador</th><th>Beta teste</th><th>Situação</th><th>Liberado em</th><th></th></tr></thead><tbody>
+    ${SBC.membros.map(m=>{const eu=SBC.user&&m.email.toLowerCase()===SBC.user.email.toLowerCase();return`<tr><td>${esc(m.email)}${eu?' <span class="st info">você</span>':""}</td><td>${adm?`<input class="inp sm" data-mbnome="${esc(m.email)}" value="${esc(m.nome||"")}" title="Nome igual ao da coluna Assistente da base" style="min-width:150px">`:esc(m.nome||"")}</td><td class="c">${adm&&!eu?`<input type="checkbox" data-mbadm="${esc(m.email)}"${m.admin?" checked":""} aria-label="Administrador">`:m.admin?"sim":"não"}</td><td class="c">${adm?`<input type="checkbox" data-mbbeta="${esc(m.email)}"${m.beta?" checked":""} aria-label="Beta teste">`:m.beta?"sim":"não"}</td><td>${situacaoAcesso(m,adm&&!eu)}</td><td class="num">${m.criado_em?fd(m.criado_em.slice(0,10)):""}</td><td class="nw">${adm&&!eu?`<button class="btn sm" data-act="convCopiar" data-v="${esc(m.email)}">Copiar link de convite</button> <button class="btn sm" data-act="rdAbrir" data-v="${esc(m.email)}">Redefinir senha</button> `+delBtn("mb:"+m.email,"Remover","sm"):""}</td></tr>`}).join("")}</tbody></table></div>
     <div class="fgrid" style="margin-top:8px"><label class="fl">Nome<input class="inp" id="mb_nome"></label><label class="fl">E-mail<input class="inp" id="mb_email" type="email"></label>
      <label class="fl">Senha provisória<span class="fbar" style="margin:0"><input class="inp mono" id="mb_senha" value="${esc(senhaProvisoria())}" style="max-width:150px"><button class="btn sm" data-act="mbGerar" type="button">gerar outra</button></span></label>
      <label class="ck"><input type="checkbox" id="mb_admin"> administrador</label><button class="btn pri" data-act="mbAdd">Criar acesso</button></div>
@@ -1564,6 +1574,9 @@ function vMenu(){
 
 /* ---------- render ---------- */
 const ehAdmin=()=>store.kind!=="sb"||!!(SBC.eu&&SBC.eu.admin);
+/* Beta teste: funções novas aparecem primeiro só para quem o administrador marcou como beta teste */
+const ehBeta=()=>store.kind==="sb"&&!!(SBC.eu&&SBC.eu.beta);
+const papel=()=>[ehAdmin()?"Administrador":"Equipe",ehBeta()?"Beta teste":""].filter(Boolean).join(" · ");
 function render(){
   const tAj=document.querySelector('.tab[data-v="ajustes"]');if(tAj)tAj.hidden=!ehAdmin();
   const tCt=document.querySelector('.tab[data-v="controle"]');if(tCt)tCt.hidden=!(store.kind==="sb"&&ehAdmin());
@@ -1572,7 +1585,8 @@ function render(){
   const todos=S.visao==="equipe";
   if(S.mode==="sb"||S.mode==="db"||S.mode==="local"){if(todos&&!["geral","ajustes","controle"].includes(S.view)){S.view="geral";try{history.replaceState(null,"","#pesquisar")}catch(e){}}
     if(!todos&&S.view==="geral"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}}
-  $$(".tab").forEach(t=>{const eq=t.classList.contains("eq");t.hidden=todos?!eq:eq;
+  if(S.view==="faturizados"&&!ehBeta()&&S.mode==="sb"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}
+  $$(".tab").forEach(t=>{const eq=t.classList.contains("eq");t.hidden=todos?!eq:(eq||(t.classList.contains("so-beta")&&!ehBeta()));
     const on=eq?(S.view==="geral"&&(S.gSub||"pesq")===t.dataset.g):t.dataset.v===S.view;if(on)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
   $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||S.mode==="restrito"?"Aguardando acesso":"Conectando…";
   const vbx=$("#versaoBox");if(vbx){vbx.textContent=VERSAO_NOME;vbx.title="Versão do site — clique para ver as novidades"}
@@ -1580,8 +1594,8 @@ function render(){
     const nome=S.mode==="sb"&&SBC.user?(SBC.eu&&SBC.eu.nome||SBC.user.email):S.mode==="db"&&S.user&&S.user.name?S.user.name:"Você";
     const ini=String(nome).trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()||"?";
     const adm=ehAdmin(),eq=store.kind==="sb"&&adm;const st=$("#saveMode")?$("#saveMode").textContent:"";
-    ub.innerHTML=logado?`<span class="umenu" tabindex="0"><span class="uchip"><span class="uav">${esc(ini)}</span><span class="unm">${esc(nomeB(nome))}</span><span class="ucar">▾</span></span>
-      <span class="udrop"><span class="uhd"><b>${esc(nomeB(nome))}</b><span>${adm?"Administrador":"Equipe"} · ${esc(st)}</span></span>
+    ub.innerHTML=logado?`<span class="umenu" tabindex="0"><span class="uchip"><span class="uav">${esc(ini)}</span><span class="unm">${esc(nomeB(nome))}</span>${ehBeta()?'<span class="ubeta">BETA TESTE</span>':""}<span class="ucar">▾</span></span>
+      <span class="udrop"><span class="uhd"><b>${esc(nomeB(nome))}</b><span>${esc(papel())} · ${esc(st)}</span></span>
       ${adm?`<button class="uit${S.view==="ajustes"?" on":""}" data-act="go" data-v="ajustes">⚙ Ajustes</button>`:""}${eq?`<button class="uit" data-act="convMeu">Copiar o meu link de convite</button>`:""}${eq?`<button class="uit${S.view==="controle"?" on":""}" data-act="go" data-v="controle">▤ Controle da equipe</button>`:""}
       <button class="uit" data-act="novidades">✦ Novidades do site <span class="muted">(${esc(VERSAO_NOME)})</span></button>${S.mode==="sb"?`<button class="uit" data-act="trocarSenha">Alterar senha</button><button class="uit" data-act="sair">Sair</button>`:""}</span></span>`:"";}
   const mm=$("#menuModo");if(mm)mm.textContent=S.visao==="pessoa"?"PESSOA":S.visao==="minha"?"MINHAS":"EQUIPE";
@@ -1597,7 +1611,7 @@ function render(){
   const ae=document.activeElement;if(ae&&$("#main").contains(ae)&&(ae.dataset.par!=null||ae.id==="q_texto"||ae.id==="busca"||ae.id==="atuQ"||ae.id==="aQ")&&render.skip){render.skip=false;return}
   const avisoVisao=S.visao==="pessoa"?`<div class="banner pessoa">Você está vendo a <b>carteira de ${esc(nomeB(S.visaoPessoa))}</b>, como ela vê ao entrar em “Minha carteira”. <button class="lk strong" data-act="voltarControle">Voltar ao Controle</button> · <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:S.visao==="minha"?(!meuNome()?`<div class="banner">Visão “Minhas carteiras”: ${store.kind==="sb"?"o seu nome na equipe está vazio. Peça para o administrador preencher em Ajustes › Equipe":"defina o seu nome na base em Ajustes"} para o site saber quais cedentes são seus. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:(!linhasDe(ultimo()).some(l=>isMeu(l.cod))&&ultimo()?`<div class="banner">Nenhum cedente com o responsável “${esc(meuNome())}” na base de ${fd(ultimo())}. ${(()=>{const n=[...new Set(linhasDe(ultimo()).map(l=>respDe(l.cod)).filter(Boolean))];return n.length?`Nomes na coluna Assistente: <b>${n.slice(0,8).map(x=>esc(x)).join(", ")}</b>${n.length>8?"…":""}. `:"A base não tem a coluna Assistente. "})()}${store.kind==="sb"?(ehAdmin()?"Ajuste o nome da pessoa em Ajustes › Equipe para ficar igual ao da base.":"Peça ao administrador para ajustar o seu nome em Ajustes › Equipe igual ao da base."):""} Se você importou a sua planilha e ela não entrou, importe de novo: agora cada planilha é juntada à base da equipe. <button class="lk strong" data-act="visao" data-v="equipe">Ver equipe toda</button></div>`:"")):"";
   const banner=avisoVisao+(S.mode==="local"?'<div class="banner">Abra pelo Claude (logado) para salvar na sua conta. Agora os dados ficam só neste navegador.</div>':"");
-  const v={geral:vGeral,controle:vControle,anotacoes:vAnotacoes,atuacao:vAtuacao,carteiras:vCarteiras,tranche:vTranche,relatorios:vRelatorios,chamados:vChamados,parecer:vParecer,qprof:vQprof,ajustes:vAjustes}[S.view]||vAtuacao;
+  const v={faturizados:vFaturizados,geral:vGeral,controle:vControle,anotacoes:vAnotacoes,atuacao:vAtuacao,carteiras:vCarteiras,tranche:vTranche,relatorios:vRelatorios,chamados:vChamados,parecer:vParecer,qprof:vQprof,ajustes:vAjustes}[S.view]||vAtuacao;
   const keep=ae&&ae.id&&$("#main").contains(ae)?{id:ae.id,pos:ae.selectionStart}:null;
   const html=(admPag?`<button class="voltar" data-act="voltarAdm" title="Voltar">← Voltar</button>`:banner)+v();
   if(S.view==="geral"&&S.geralKeyOk){S.geralKeyOk=false;return}
@@ -1607,6 +1621,27 @@ function render(){
 }
 function vazio(t){return`<fieldset class="box"><legend>${t||"Sem base"}</legend><div class="empty"><p>Nenhuma base importada ainda. Todo dia, importe a planilha (abas BASE CARTEIRAS e BASE - TRANCHE) ou os relatórios exportados. O site calcula tudo igual à planilha e guarda a posição do dia, título a título, para comparar com a próxima.</p><button class="btn pri" data-act="import">Importar base do dia</button></div></fieldset>`}
 function totbar(items){return`<div class="totbar">${items.map(([k,v])=>`<span>${k}: <b>${v}</b></span>`).join("")}</div>`}
+
+/* ---------- FATURIZADOS NOVOS SEM MOTIVO (beta teste) ---------- */
+const adtData=a=>{const s=String(a==null?"":a).replace(/\D/g,"");if(s.length<6)return null;const y=2000+ +s.slice(0,2),m=+s.slice(2,4),d=+s.slice(4,6);if(m<1||m>12||d<1||d>31)return null;return`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`};
+function fatLista(d,b){const B=b.car;const hoje=Core.isoSerial(d);const padrao=+(S.cfg.fatDias||5);const out=new Map();
+  for(const r of B.rows){const cod=String(r[1]);if(!vis(cod))continue;const rot=B.rot[r[8]]||"";if(!/FATURIZ/i.test(rot))continue;
+    const mot=String(B.mot[r[3]]||"").trim();if(mot)continue;const ad=adtData(r[5]);if(!ad)continue;
+    const car=S.car[cod],pz=car?Core.prazoCk(car.texto):null;const lim=pz?pz.n:padrao;const dias=hoje-Core.isoSerial(ad);
+    if(dias<0||dias>lim)continue;
+    let g=out.get(cod);if(!g){g={cod,nome:(B.ced||{})[cod]||nomeCed(cod),car:car&&car.texto||"",pz,lim,it:[],v:0};out.set(cod,g)}g.it.push({r,bb:B,ad,dias});g.v+=r[2]}
+  return[...out.values()].sort((a,b)=>b.v-a.v)}
+function vFaturizados(){
+  const d=ultimo();const tit=`<div class="ptitle">VAZIOS <span class="muted" style="font-weight:normal">· faturizados novos sem motivo</span> <span class="ubeta">BETA TESTE</span><span class="muted"> · ${d?"base de "+fd(d):"sem base"}</span></div>`;
+  if(!d)return tit+vazio();const b=needBase(d);if(b===undefined)return tit+'<p class="hint carregando">Carregando a base…</p>';if(!b||!b.car)return tit+`<div class="warn-box">A base de ${fd(d)} não tem os títulos salvos. Importe a base de novo.</div>`;
+  const L=fatLista(d,b);const tot=L.reduce((a,g)=>a+g.v,0),n=L.reduce((a,g)=>a+g.it.length,0);
+  return tit+`<fieldset class="box"><legend>Como a lista é montada</legend><p class="small">Títulos de rótulos <b>faturizados</b>, com <b>Motivo Entrega vazio</b> e <b>aditivo novo</b>: a data do aditivo (os 6 primeiros dígitos, AAMMDD) está dentro do prazo da característica do cedente (ex.: “checagem D+5” = até 5 dias). Cedente sem prazo na característica usa o padrão de <input class="inp num" id="fat_dias" value="${esc(S.cfg.fatDias||5)}" style="width:52px;display:inline-block"> dias.</p></fieldset>
+   ${totbar([["Cedentes",L.length],["Títulos",fN(n)],["Valor",money(tot)]])}
+   ${L.length?L.map(g=>`<fieldset class="box"><legend>${esc(nomeB(g.nome))} <span class="muted">· ${esc(g.cod)} · ${g.it.length} títulos · ${money(g.v)} · prazo ${g.pz?esc(g.pz.txt):"padrão de "+g.lim+" dias"}</span></legend>
+     ${g.car?`<p class="small wrap muted" style="margin:0 0 6px">${esc(g.car.slice(0,400))}${g.car.length>400?"…":""}</p>`:""}
+     <div class="tw"><table class="grid"><thead><tr><th>Cód. Cedente</th><th>Seu número</th><th>Título</th><th>Aditivo</th><th>Data do aditivo</th><th>Dias</th><th>Cód. Sacado</th><th>Sacado</th><th>Vlr. Aberto</th><th>Emissão</th><th>Saída</th><th>Rótulo</th></tr></thead><tbody>
+     ${g.it.sort((a,c)=>c.r[2]-a.r[2]).map(x=>{const r=x.r,B=x.bb;return`<tr><td class="num">${esc(r[1])}</td><td class="num">${esc(r[7]||"")}</td><td class="num small">${esc(String(r[0]).replace(/#\d+$/,""))}</td><td class="num">${esc(r[5])}</td><td class="num">${fd(x.ad)}</td><td class="r num${x.dias>=g.lim?" bad-t":""}">${x.dias===0?"hoje":x.dias+" d"}</td><td class="num">${esc(r[19]||"—")}</td><td>${esc(nomeB(B.sac[r[4]]||""))}</td><td class="r num">${money(r[2])}</td><td class="num">${r[10]?fd(Core.serialISO(r[10])):"—"}</td><td class="num">${r[9]?fd(Core.serialISO(r[9])):"—"}</td><td class="small">${esc(B.rot[r[8]]||"")}</td></tr>`}).join("")}</tbody></table></div>
+     <div class="fbar"><button class="btn sm" data-act="fatTodas" data-id="${esc(g.cod)}">Ver com todas as colunas da base</button><button class="btn sm" data-act="ced" data-id="${esc(g.cod)}">Abrir ficha do cedente</button></div></fieldset>`).join(""):'<p class="muted">Nenhum título faturizado novo sem motivo nesta base.</p>'}`}
 
 /* ---------- CEDENTES E SACADOS (dash + síntese do risco) ---------- */
 function geralData(){const ds=regDatas();return S.geralDia&&ds.includes(S.geralDia)?S.geralDia:(S.dia&&ds.includes(S.dia)?S.dia:ultimo())}
@@ -2595,10 +2630,11 @@ document.addEventListener("click",async e=>{
     case"manterSenha":manterSenha();break;
     case"rdAbrir":openRedefinir(el.dataset.v);break;
     case"convCopiar":copiarConvite(el.dataset.v);break;
-    case"novidades":if(document.activeElement)document.activeElement.blur();mostrarNovidades(NOVIDADES.slice(0,4),false);break;
+    case"novidades":if(document.activeElement)document.activeElement.blur();mostrarNovidades(novidadesVisiveis().slice(0,4),false);break;
     case"convMeu":if(SBC.user)copiarConvite(SBC.user.email.toLowerCase());break;
     case"gDash":geralBaixarDash();break;
     case"gSub":S.gSub=el.dataset.v;render();break;
+    case"fatTodas":{const d=ultimo();const b=await loadBase(d);if(!b||!b.car)break;const g=fatLista(d,b).find(x=>x.cod===id);if(g)mostrarTit(`${nomeB(g.nome)} · VAZIOS`,g.it,fd(d),{h:"Dias desde o aditivo",f:x=>x.dias+" d"},d);break}
     case"gSacTit":{const d=geralData();const b=await loadBase(d);if(!b||!b.car)break;const B=b.car,k=el.dataset.s;
       const it=B.rows.filter(r=>String(r[1])===String(id)&&(String(r[19]||"")===k||String(B.sac[r[4]]||"")===k)).map(r=>({r,bb:B}));
       mostrarTit(`${nomeB(nomeCed(id))} · sacado ${nomeB(B.sac[it[0]?it[0].r[4]:0]||k)}`,it,fd(d),{h:"Situação",f:x=>Geral.CL[Geral.classe(B.mot[x.r[3]]||"")[0]]},d);break}
@@ -2695,6 +2731,7 @@ document.addEventListener("change",async e=>{
   const t=e.target;
   if(t.dataset.ea&&S.ea){S.ea[t.dataset.ea]=t.value;return}
   if(t.dataset.mbadm){membroAdmin(t.dataset.mbadm,t.checked);return}
+  if(t.dataset.mbbeta){membroBeta(t.dataset.mbbeta,t.checked);return}
   if(t.id==="c_sref"&&t.files[0]){try{const j=JSON.parse(await t.files[0].text());if(!j||!j.cedentes)throw new Error("Arquivo de referências inválido.");
       const cfg={...S.cfg,sintRef:j.cedentes,...(j.desempenho&&!String(S.cfg.desempenho||"").trim().split("\n").some(l=>(l.split(";")[1]||"").trim())?{desempenho:j.desempenho}:{})};
       await safe(store.set("cfg","geral",cfg),Object.keys(j.cedentes).length+" cedentes carregados");render()}catch(e){toast(e.message)}t.value="";return}
@@ -2712,6 +2749,7 @@ document.addEventListener("change",async e=>{
   if(t.id==="i_file"){await addImportFiles([...t.files]);t.value=""}
   if(t.id==="i_data")drawImport();
   if(t.id==="i_keepTr"){D.keepTr=t.checked;drawImport()}
+  if(t.id==="fat_dias"){const n=Math.max(0,Math.min(60,parseInt(t.value,10)||0));await safe(store.set("cfg","geral",{...S.cfg,fatDias:n}));render();return}
   if(t.id==="g_dia"){S.geralDia=t.value;render();return}
   if(t.id==="g_busca"){if(/^\d+ - /.test(t.value))gBuscar();return}
   if(t.id==="i_subst"){D.substituir=t.checked;drawImport()}
@@ -2733,7 +2771,7 @@ document.addEventListener("change",async e=>{
 document.addEventListener("dragover",e=>{const d=e.target.closest&&e.target.closest("#i_drop");if(d){e.preventDefault();d.classList.add("over")}});
 document.addEventListener("dragleave",e=>{const d=e.target.closest&&e.target.closest("#i_drop");if(d)d.classList.remove("over")});
 document.addEventListener("drop",e=>{const d=e.target.closest&&e.target.closest("#i_drop");if(d){e.preventDefault();d.classList.remove("over");addImportFiles([...e.dataTransfer.files])}});
-const VIEWS=["controle","anotacoes","atuacao","carteiras","tranche","relatorios","chamados","parecer","qprof","ajustes","geral"];
+const VIEWS=["faturizados","controle","anotacoes","atuacao","carteiras","tranche","relatorios","chamados","parecer","qprof","ajustes","geral"];
 const GHASH={pesquisar:"pesq",dashboard:"down",base:"imp"};
 function fromHash(){const h=location.hash.slice(1);if(GHASH[h]){S.view="geral";S.gSub=GHASH[h]}else if(VIEWS.includes(h))S.view=h}
 window.addEventListener("hashchange",()=>{fromHash();render()});
