@@ -1312,6 +1312,10 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 }
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
+ {v:"2026.10.30",nome:"Beta 1.3",data:"30/10/2026",itens:[
+  "<b>Carteiras:</b> nova coluna Cód. Cedente.",
+  "<b>Títulos e sacados pendentes:</b> ao abrir os títulos (pendentes, C99, todos etc.) aparecem todas as colunas da base, na ordem do arquivo, como nos detalhes da Síntese do risco.",
+  "<b>Pesquisar cedente:</b> clicando no sacado, abrem os títulos dele com todas as colunas e a situação de cada um."]},
  {v:"2026.10.29b",nome:"Beta 1.2",data:"29/10/2026",itens:[
   "<b>Detalhes dos títulos:</b> além do que já aparecia, agora mostram sempre Cód. Cedente, Aditivo, Cód. Sacado, cidade/UF do sacado, data de entrega, vencimento, KM e Prazo NF.",
   "<b>Planilha de pendências:</b> cada aba de motivo traz também Cod. Cedente e Aditivo, mantendo as colunas de antes.",
@@ -1649,7 +1653,7 @@ function gPesquisa(date,b){
     ${S.car[cod]&&S.car[cod].texto?`<tr><th class="l">Característica</th><td colspan="3" class="wrap small">${esc(S.car[cod].texto)}</td></tr>`:""}</tbody></table></div></fieldset>
    <fieldset class="box"><legend>Rótulos e motivos</legend><div class="tw"><table class="grid"><thead><tr><th>Rótulo / Motivo Entrega</th><th>Risco (valor)</th><th>%</th><th>Situação</th></tr></thead><tbody>${linhas.join("")}<tr class="tot"><td><b>TOTAL</b></td><td class="r num"><b>${money(Sd.tot)}</b></td><td class="r num"><b>100,0%</b></td><td></td></tr></tbody></table></div></fieldset>
    <fieldset class="box"><legend>Sacados (${sacs.length})</legend><div class="tw"><table class="grid"><thead><tr><th>Cód.</th><th>Sacado</th><th>Cidade/UF</th><th>Títulos</th><th>Valor aberto</th><th>% confirmado</th><th>Pendente</th><th>Problema</th><th>Motivos</th></tr></thead><tbody>
-    ${sacs.slice(0,lim2).map(a=>`<tr><td class="num">${esc(a.sacc||"—")}</td><td>${esc(a.sac)}</td><td class="small">${esc([a.cid,a.uf].filter(Boolean).join("/"))}</td><td class="r num">${a.n}</td><td class="r num">${money(a.v)}</td><td class="r num">${pc(a.v?a.cv/a.v:0)}</td><td class="r num">${a.pv?money(a.pv):"—"}</td><td class="r num${a.prv?" bad":""}">${a.prv?money(a.prv):"—"}</td><td class="small wrap">${[...a.mot.entries()].sort((x,y)=>y[1]-x[1]).slice(0,3).map(([m,n])=>esc(m)+" ("+n+")").join(" · ")}</td></tr>`).join("")}</tbody></table></div>
+    ${sacs.slice(0,lim2).map(a=>`<tr><td class="num">${esc(a.sacc||"—")}</td><td><button class="lk" data-act="gSacTit" data-id="${esc(cod)}" data-s="${esc(a.sacc||a.sac)}">${esc(a.sac)}</button></td><td class="small">${esc([a.cid,a.uf].filter(Boolean).join("/"))}</td><td class="r num">${a.n}</td><td class="r num">${money(a.v)}</td><td class="r num">${pc(a.v?a.cv/a.v:0)}</td><td class="r num">${a.pv?money(a.pv):"—"}</td><td class="r num${a.prv?" bad":""}">${a.prv?money(a.prv):"—"}</td><td class="small wrap">${[...a.mot.entries()].sort((x,y)=>y[1]-x[1]).slice(0,3).map(([m,n])=>esc(m)+" ("+n+")").join(" · ")}</td></tr>`).join("")}</tbody></table></div>
     ${sacs.length>25?`<button class="lk" data-act="gSacAll">${S.gSacAll?"Mostrar só os 25 maiores":"Mostrar todos os "+sacs.length+" sacados"}</button>`:""}</fieldset>`}
 function gDownload(date,b){const ceds=geralCeds(b);
   return`<fieldset class="box"><legend>Dashboard</legend><p>Gera o dash de confirmação da carteira (o mesmo modelo do “Índice de Confirmação da Carteira”) com a base de ${fd(date)} e a visão atual (${S.visao==="minha"?"minha carteira":S.visao==="pessoa"?"carteira de "+esc(nomeB(S.visaoPessoa)):"equipe toda"}: ${ceds.length} cedentes). É um arquivo único, que abre em qualquer navegador e pode ser encaminhado.</p><button class="btn pri" data-act="gDash">Baixar dashboard (HTML)</button></fieldset>
@@ -1930,13 +1934,13 @@ function vCarteiras(){
    <label class="fl">Ordenar ${opt("sort",S.sort,[["status","Prioridade"],["faltam","Faltam p/ meta"],["valor","Valor"],["delta","Maior queda"],["nome","Nome"]])}</label>
    <label class="fl grow">Cedente <input class="inp" id="busca" type="search" placeholder="Nome, código ou grupo" value="${esc(S.busca)}"></label>
   </div></fieldset>
-  <div class="tw"><table class="grid" id="tCart"><thead><tr><th>Cedente</th><th>Risco · Dia</th><th>Títulos</th><th>Valor aberto</th><th>Índice</th><th>Δ ${S.cmp?fds(S.cmp):""}</th><th>C99</th><th>Não atende</th><th>Nada consta</th><th>Situação</th><th>Faltam p/ meta</th><th>Evolução</th><th>Próximo passo</th></tr></thead>
-   <tbody>${rows.map(l=>{const c=C[l.cod],an=S.anot[l.cod]||{};return`<tr>${cedCell(l.cod,l.nome," · nível "+(l.nivel||"—"))}<td>${esc(l.risco)}<div class="sub">${esc(an.dia||l.dia)}</div></td>
+  <div class="tw"><table class="grid" id="tCart"><thead><tr><th>Cód. Cedente</th><th>Cedente</th><th>Risco · Dia</th><th>Títulos</th><th>Valor aberto</th><th>Índice</th><th>Δ ${S.cmp?fds(S.cmp):""}</th><th>C99</th><th>Não atende</th><th>Nada consta</th><th>Situação</th><th>Faltam p/ meta</th><th>Evolução</th><th>Próximo passo</th></tr></thead>
+   <tbody>${rows.map(l=>{const c=C[l.cod],an=S.anot[l.cod]||{};return`<tr><td class="num"><b>${esc(l.cod)}</b></td>${cedCell(l.cod,l.nome," · nível "+(l.nivel||"—"))}<td>${esc(l.risco)}<div class="sub">${esc(an.dia||l.dia)}</div></td>
     <td class="r num">${l.tit}${c?`<div class="sub">${dnum(l.tit-c.tit)}</div>`:""}</td><td class="r num">${mk(l.valor)}${c?`<div class="sub">${dval(l.valor-c.valor)}</div>`:""}</td>
     <td>${idxC(l)}</td><td class="r">${c&&c.ind!=null?dpp(l.ind-c.ind):S.cmp?'<span class="dl flat">novo</span>':""}</td>
     <td class="r num ${l.c99>0?"bad-t":""}">${pc(l.c99)}</td><td class="r num">${pc(l.na)}</td><td class="r num">${pc(l.nc)}</td><td>${chip(l.status)}</td>
     <td class="r num">${l.faltam?mk(l.faltam):'<span class="muted">—</span>'}</td><td>${spark(hist.map(d=>{const x=linhasDe(d).find(y=>y.cod===l.cod);return x?x.ind:null}),l.meta)}</td>
-    <td class="wrap small">${an.proximo?esc(an.proximo):'<span class="muted">—</span>'}${an.atualizado?`<div class="sub">atualizado ${fds(an.atualizado)}</div>`:""}</td></tr>`}).join("")||'<tr><td colspan="13" class="muted">Nenhum cedente com esses filtros.</td></tr>'}</tbody></table></div>
+    <td class="wrap small">${an.proximo?esc(an.proximo):'<span class="muted">—</span>'}${an.atualizado?`<div class="sub">atualizado ${fds(an.atualizado)}</div>`:""}</td></tr>`}).join("")||'<tr><td colspan="14" class="muted">Nenhum cedente com esses filtros.</td></tr>'}</tbody></table></div>
   ${totbar([["Total valor aberto",money(tv)],["Valor confirmado",money(tcv)],["Índice da carteira",pc(tv?tcv/tv:null)],["Cedentes",L.length],["Abaixo da meta",cd.filter(l=>l.status==="Abaixo").length],["Faltam p/ meta",mk(L.reduce((a,l)=>a+(l.faltam||0),0))]])}
   <p class="foot">Situação: abaixo da meta = Abaixo; entre a meta e a meta + ${pc(cfg.margem,0)} = Atenção; acima = OK. Meta por risco: Alto ${pc(cfg.metaAlto,0)}, Médio ${pc(cfg.metaMedio,0)}, Baixo ${pc(cfg.metaBaixo,0)}, sem risco ${pc(cfg.metaPadrao,0)}. Característica que pede para não atuar = Não atuar, sem meta. <button class="lk" data-act="copyTbl" data-id="tCart">Copiar tabela</button></p>`;
 }
@@ -2337,13 +2341,15 @@ function openTit(cod,kind,f){
   if(!b||!b[kind]){drawer(titulo,`<p class="warn-box">A base título a título de ${fd(d)} não está salva. Importe a base de novo para ver os títulos.</p>`,"",true);return}
   if(f==="ment"||f==="mconf"){const pv=anterior(d);const bp=needBase(pv,()=>openTit(cod,kind,f));if(bp===undefined){drawer(titulo,'<p class="hint">Carregando…</p>',"",true);return}
     if(!bp||!bp[kind]){drawer(titulo,'<p class="warn-box">A base anterior não está salva título a título.</p>',"",true);return}
-    const mv=Core.movimento(b[kind],bp[kind],S.cfg,null,true);const it=mv.L.filter(x=>x.t===(f==="ment"?"ent":"conf")&&b[kind].rows[x.i][1]==cod).map(x=>({r:b[kind].rows[x.i],bb:b[kind],antes:x.de!=null?"(estava sem confirmação)":""}));return mostrarTit(titulo,it,fd(d))}
+    const mv=Core.movimento(b[kind],bp[kind],S.cfg,null,true);const it=mv.L.filter(x=>x.t===(f==="ment"?"ent":"conf")&&b[kind].rows[x.i][1]==cod).map(x=>({r:b[kind].rows[x.i],bb:b[kind],antes:x.de!=null?"(estava sem confirmação)":""}));return mostrarTit(titulo,it,fd(d),null,d)}
   const B=b[kind],mi=Core.motInfo(B,S.cfg),base=Core.isoSerial(d),pz=S.car[cod]?Core.prazoCk(S.car[cod].texto):null;
   const it=B.rows.filter(r=>String(r[1])===String(cod)).filter(r=>{const cl=mi[r[3]].cls,s0=r[9]||r[10];
     if(f==="sem")return cl!==0;if(f==="c99")return cl===1;if(f==="atr")return cl===3&&(r[13]===1||(r[14]!=null&&r[14]<0));if(f==="fora")return cl!==0&&cl!==1&&pz&&s0&&base-s0>pz.n;return true}).map(r=>({r,bb:B}));
-  mostrarTit(titulo,it,fd(d));
+  mostrarTit(titulo,it,fd(d),null,d);
 }
-function mostrarTit(titulo,it,quando,extraCol){
+function mostrarTit(titulo,it,quando,extraCol,dataISO){
+  if(dataISO&&store.kind!=="db"){S.raws=S.raws||new Map();if(!S.raws.has(dataISO)){drawer(titulo,'<p class="hint carregando">Carregando os títulos…</p>',"",true);loadRaw(dataISO).then(()=>mostrarTit(titulo,it,quando,extraCol,dataISO));return}
+    const rw=S.raws.get(dataISO);if(rw&&rw.hdr)return mostrarTitRaw(titulo,it,quando,extraCol,rw)}
   it.sort((a,b)=>b.r[2]-a.r[2]);const tot=it.reduce((a,x)=>a+x.r[2],0);const d=v=>v?fd(serD(v)):"—";const tx=v=>v==null||v===""?"—":esc(v);
   const velha=it.some(x=>x.r.length<18);
   drawer(titulo,`<div class="row-b"><span class="muted">Base de ${quando} · ${fN(it.length)} títulos · ${money(tot)}</span><button class="btn sm" data-act="copyTbl" data-id="tTit">Copiar tabela</button></div>
@@ -2351,6 +2357,19 @@ function mostrarTit(titulo,it,quando,extraCol){
   <div class="tw" style="max-height:62vh"><table class="grid" id="tTit"><thead><tr><th>Cód. Cedente</th><th>Seu número</th><th>Título</th><th>Aditivo</th><th>Cód. Sacado</th><th>Sacado</th><th>Cidade/UF do sacado</th><th>Vlr. Aberto</th><th>Motivo Entrega</th>${extraCol?"<th>"+extraCol.h+"</th>":""}<th>Emissão</th><th>Saída</th><th>Dta. Ent.</th><th>Venc. Orig.</th><th>KM</th><th>Prazo NF</th><th>Rótulo</th></tr></thead>
   <tbody>${it.slice(0,1500).map(x=>{const r=x.r,b=x.bb;return`<tr><td class="num">${esc(r[1])}</td><td class="num">${tx(r[7])}</td><td class="num small">${esc(String(r[0]).replace(/#\d+$/,""))}</td><td class="num small">${tx(r[5])}</td><td class="num">${tx(r[19])}</td><td class="wrap">${esc(nomeB(b.sac[r[4]]||""))}</td><td class="small">${r[15]!=null?esc((b.dst||[])[r[15]]||""):"—"}</td><td class="r num">${money(r[2])}</td><td class="wrap small">${esc(b.mot[r[3]]||"")}</td>${extraCol?`<td class="wrap small">${esc(extraCol.f(x))}</td>`:""}<td class="num">${d(r[10])}</td><td class="num">${d(r[9])}</td><td class="num">${d(r[6])}</td><td class="num">${d(r[20])}</td><td class="r num">${typeof r[12]==="number"?fN(r[12]):"—"}</td><td>${r[13]===1?'<span class="st bad">FORA</span>':r[13]===0?'<span class="st ok">DENTRO</span>':"—"}</td><td class="small">${esc(b.rot[r[8]]||"")}</td></tr>`}).join("")||'<tr><td colspan="17" class="muted">Nenhum título.</td></tr>'}</tbody></table></div>${it.length>1500?'<p class="hint">Mostrando os 1.500 maiores.</p>':""}`,"",true);
 }
+/* títulos com todas as colunas da base original, na ordem do arquivo (igual aos detalhes da síntese) */
+function rawIndice(rw){if(rw._ix)return rw._ix;const H=rw.hdr.map(h=>Core.nrm(h));const iT=H.indexOf(Core.nrm("Título")),iS=H.indexOf(Core.nrm("Seu Número")),iC=H.indexOf(Core.nrm("Cod. Cedente"));const m=new Map(),seen=new Map();
+  for(const r of rw.rows){if(!Core.toInt(r[iC]))continue;let k=iT>=0&&r[iT]!=null?String(r[iT]).trim():"";if(!k)k=(iS>=0?String(r[iS]==null?"":r[iS]).trim():"")+"|"+Core.toInt(r[iC]);const n=seen.get(k)||0;seen.set(k,n+1);if(n)k+="#"+(n+1);if(!m.has(k))m.set(k,r)}
+  rw._ix=m;return m}
+function mostrarTitRaw(titulo,it,quando,extraCol,rw){
+  it.sort((a,b)=>b.r[2]-a.r[2]);const tot=it.reduce((a,x)=>a+x.r[2],0);const ix=rawIndice(rw);const H=rw.hdr.map(h=>String(h==null?"":h));
+  const ehD=h=>/^(dta\.?|emiss|venc|sa[ií]da|data)/i.test(h.trim()),ehV=h=>/^vlr/i.test(h.trim());
+  const fmt=(h,v)=>{if(v==null||v==="")return"";if(typeof v==="number"){if(ehD(h)&&v>20000)return fd(Core.serialISO(v));if(ehV(h))return money(v)}return esc(v)};
+  const iMot=H.findIndex(h=>Core.nrm(h)===Core.nrm("Motivo Entrega"));
+  drawer(titulo,`<div class="row-b"><span class="muted">Base de ${quando} · ${fN(it.length)} títulos · ${money(tot)} · todas as colunas da base</span><button class="btn sm" data-act="copyTbl" data-id="tTit">Copiar tabela</button></div>
+  <div class="tw" style="max-height:66vh"><table class="grid" id="tTit"><thead><tr>${extraCol?`<th>${esc(extraCol.h)}</th>`:""}${H.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
+  <tbody>${it.slice(0,1500).map(x=>{const r=ix.get(String(x.r[0]));if(!r)return`<tr>${extraCol?`<td>${esc(extraCol.f(x))}</td>`:""}<td colspan="${H.length}" class="muted">${esc(x.r[0])} · ${money(x.r[2])} (título não encontrado na base original)</td></tr>`;
+    return`<tr>${extraCol?`<td class="wrap small">${esc(extraCol.f(x))}</td>`:""}${H.map((h,i)=>`<td class="${typeof r[i]==="number"&&!ehD(h)?"r num":i===iMot?"wrap small":"nw small"}">${fmt(h,r[i])}</td>`).join("")}</tr>`}).join("")||`<tr><td colspan="${H.length+1}" class="muted">Nenhum título.</td></tr>`}</tbody></table></div>${it.length>1500?'<p class="hint">Mostrando os 1.500 maiores.</p>':""}`,"",true)}
 function openRelTit(f,cod){
   const R=relMov();if(!R||!R.mv)return;const M=R.mv;
   const it=M.L.filter(x=>x.t===f||(f==="liq"&&x.t==="liq")).map(x=>{const B=x.b==="D"?R.bD:R.bP;return{r:B.rows[x.i],bb:B,x}}).filter(o=>!cod||String(o.r[1])===String(cod));
@@ -2580,6 +2599,9 @@ document.addEventListener("click",async e=>{
     case"convMeu":if(SBC.user)copiarConvite(SBC.user.email.toLowerCase());break;
     case"gDash":geralBaixarDash();break;
     case"gSub":S.gSub=el.dataset.v;render();break;
+    case"gSacTit":{const d=geralData();const b=await loadBase(d);if(!b||!b.car)break;const B=b.car,k=el.dataset.s;
+      const it=B.rows.filter(r=>String(r[1])===String(id)&&(String(r[19]||"")===k||String(B.sac[r[4]]||"")===k)).map(r=>({r,bb:B}));
+      mostrarTit(`${nomeB(nomeCed(id))} · sacado ${nomeB(B.sac[it[0]?it[0].r[4]:0]||k)}`,it,fd(d),{h:"Situação",f:x=>Geral.CL[Geral.classe(B.mot[x.r[3]]||"")[0]]},d);break}
     case"gSacAll":S.gSacAll=!S.gSacAll;render();break;
     case"gBuscar":gBuscar();break;
     case"gSint":geralSintese($("#g_ced")?$("#g_ced").value:"");break;
