@@ -1314,7 +1314,7 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
  {v:"2026.10.30c",nome:"Beta 1.5",data:"30/10/2026",itens:[
-  {beta:true,texto:"<b>VAZIOS:</b> nova aba em Minha carteira com os títulos de rótulos faturizados, Motivo Entrega vazio e aditivo dentro do prazo da característica do cedente (ex.: D+5)."}]},
+  {beta:true,texto:"<b>VAZIOS:</b> nova aba em Minha carteira com os títulos de rótulos faturizados, Motivo Entrega vazio e Merc. Ent. = FALSE, de qualquer aditivo; os que passaram do prazo da característica (ex.: D+5) ficam em vermelho para não serem esquecidos."}]},
  {v:"2026.10.30b",nome:"Beta 1.4",data:"30/10/2026",itens:[
   "<b>Beta teste:</b> o administrador pode marcar pessoas como beta teste em Ajustes › Equipe. Funções novas aparecem primeiro para elas, com o selo BETA TESTE; depois de testadas, são liberadas para todos."]},
  {v:"2026.10.30",nome:"Beta 1.3",data:"30/10/2026",itens:[
@@ -1625,22 +1625,26 @@ function totbar(items){return`<div class="totbar">${items.map(([k,v])=>`<span>${
 /* ---------- FATURIZADOS NOVOS SEM MOTIVO (beta teste) ---------- */
 const adtData=a=>{const s=String(a==null?"":a).replace(/\D/g,"");if(s.length<6)return null;const y=2000+ +s.slice(0,2),m=+s.slice(2,4),d=+s.slice(4,6);if(m<1||m>12||d<1||d>31)return null;return`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`};
 function fatLista(d,b){const B=b.car;const hoje=Core.isoSerial(d);const padrao=+(S.cfg.fatDias||5);const out=new Map();
+  const rw=S.raws&&S.raws.get(d);const ixR=rw&&rw.hdr?rawIndice(rw):null;const iMerc=rw&&rw.hdr?rw.hdr.findIndex(h=>Core.nrm(h)===Core.nrm("Merc. Ent.")):-1;
+  const mercFalse=r=>{if(!ixR||iMerc<0)return true;const o=ixR.get(String(r[0]));if(!o)return false;const v=o[iMerc];return v===false||/^(false|falso|0|n|nao|não)$/i.test(String(v==null?"":v).trim())};
   for(const r of B.rows){const cod=String(r[1]);if(!vis(cod))continue;const rot=B.rot[r[8]]||"";if(!/FATURIZ/i.test(rot))continue;
-    const mot=String(B.mot[r[3]]||"").trim();if(mot)continue;const ad=adtData(r[5]);if(!ad)continue;
-    const car=S.car[cod],pz=car?Core.prazoCk(car.texto):null;const lim=pz?pz.n:padrao;const dias=hoje-Core.isoSerial(ad);
-    if(dias<0||dias>lim)continue;
-    let g=out.get(cod);if(!g){g={cod,nome:(B.ced||{})[cod]||nomeCed(cod),car:car&&car.texto||"",pz,lim,it:[],v:0};out.set(cod,g)}g.it.push({r,bb:B,ad,dias});g.v+=r[2]}
-  return[...out.values()].sort((a,b)=>b.v-a.v)}
+    const mot=String(B.mot[r[3]]||"").trim();if(mot)continue;if(!mercFalse(r))continue;const ad=adtData(r[5]);
+    const car=S.car[cod],pz=car?Core.prazoCk(car.texto):null;const lim=pz?pz.n:padrao;const dias=ad?hoje-Core.isoSerial(ad):null;
+    let g=out.get(cod);if(!g){g={cod,nome:(B.ced||{})[cod]||nomeCed(cod),car:car&&car.texto||"",pz,lim,it:[],v:0};out.set(cod,g)}const fora=dias!=null&&dias>lim;g.it.push({r,bb:B,ad,dias,fora});g.v+=r[2];if(fora){g.nf=(g.nf||0)+1;g.vf=(g.vf||0)+r[2]}}
+  return[...out.values()].sort((a,b)=>(b.vf||0)-(a.vf||0)||b.v-a.v)}
 function vFaturizados(){
-  const d=ultimo();const tit=`<div class="ptitle">VAZIOS <span class="muted" style="font-weight:normal">· faturizados novos sem motivo</span> <span class="ubeta">BETA TESTE</span><span class="muted"> · ${d?"base de "+fd(d):"sem base"}</span></div>`;
+  const d=ultimo();const tit=`<div class="ptitle">VAZIOS <span class="muted" style="font-weight:normal">· faturizados sem motivo e Merc. Ent. FALSE</span> <span class="ubeta">BETA TESTE</span><span class="muted"> · ${d?"base de "+fd(d):"sem base"}</span></div>`;
   if(!d)return tit+vazio();const b=needBase(d);if(b===undefined)return tit+'<p class="hint carregando">Carregando a base…</p>';if(!b||!b.car)return tit+`<div class="warn-box">A base de ${fd(d)} não tem os títulos salvos. Importe a base de novo.</div>`;
+  S.raws=S.raws||new Map();if(!S.raws.has(d)&&store.kind!=="db"){if(!S.rawCarregando){S.rawCarregando=true;loadRaw(d).finally(()=>{S.rawCarregando=false;render()})}return tit+'<p class="hint carregando">Carregando a base…</p>'}
+  const temMerc=!!(S.raws.get(d)&&S.raws.get(d).hdr&&S.raws.get(d).hdr.some(h=>Core.nrm(h)===Core.nrm("Merc. Ent.")));
   const L=fatLista(d,b);const tot=L.reduce((a,g)=>a+g.v,0),n=L.reduce((a,g)=>a+g.it.length,0);
-  return tit+`<fieldset class="box"><legend>Como a lista é montada</legend><p class="small">Títulos de rótulos <b>faturizados</b>, com <b>Motivo Entrega vazio</b> e <b>aditivo novo</b>: a data do aditivo (os 6 primeiros dígitos, AAMMDD) está dentro do prazo da característica do cedente (ex.: “checagem D+5” = até 5 dias). Cedente sem prazo na característica usa o padrão de <input class="inp num" id="fat_dias" value="${esc(S.cfg.fatDias||5)}" style="width:52px;display:inline-block"> dias.</p></fieldset>
-   ${totbar([["Cedentes",L.length],["Títulos",fN(n)],["Valor",money(tot)]])}
-   ${L.length?L.map(g=>`<fieldset class="box"><legend>${esc(nomeB(g.nome))} <span class="muted">· ${esc(g.cod)} · ${g.it.length} títulos · ${money(g.v)} · prazo ${g.pz?esc(g.pz.txt):"padrão de "+g.lim+" dias"}</span></legend>
+  return tit+`<fieldset class="box"><legend>Como a lista é montada</legend><p class="small">São VAZIOS os títulos de rótulos <b>faturizados</b>, com <b>Motivo Entrega vazio</b> e <b>Merc. Ent. = FALSE</b>, de qualquer aditivo. A data do aditivo (os 6 primeiros dígitos, AAMMDD) só serve para avisar: quando passou do prazo da característica do cedente (ex.: “checagem D+5” = 5 dias), o título fica marcado em vermelho como <b>passou do prazo</b>, para não ser esquecido. Cedente sem prazo na característica usa o padrão de <input class="inp num" id="fat_dias" value="${esc(S.cfg.fatDias||5)}" style="width:52px;display:inline-block"> dias.</p></fieldset>
+   ${temMerc?"":`<div class="warn-box">A base de ${fd(d)} foi importada sem a coluna Merc. Ent. guardada, então o filtro Merc. Ent. = FALSE não pôde ser aplicado. Importe a base de novo.</div>`}
+   ${(()=>{const nf=L.reduce((a,g)=>a+(g.nf||0),0),vf=L.reduce((a,g)=>a+(g.vf||0),0);return totbar([["Cedentes",L.length],["Títulos",fN(n)],["Valor",money(tot)],["Passaram do prazo",nf?`<span class="bad-t">${fN(nf)} · ${money(vf)}</span>`:"0"]])})()}
+   ${L.length?L.map(g=>`<fieldset class="box"><legend>${esc(nomeB(g.nome))} <span class="muted">· ${esc(g.cod)} · ${g.it.length} títulos · ${money(g.v)} · prazo ${g.pz?esc(g.pz.txt):"padrão de "+g.lim+" dias"}</span>${g.nf?` <span class="st bad">${g.nf} passaram do prazo</span>`:""}</legend>
      ${g.car?`<p class="small wrap muted" style="margin:0 0 6px">${esc(g.car.slice(0,400))}${g.car.length>400?"…":""}</p>`:""}
-     <div class="tw"><table class="grid"><thead><tr><th>Cód. Cedente</th><th>Seu número</th><th>Título</th><th>Aditivo</th><th>Data do aditivo</th><th>Dias</th><th>Cód. Sacado</th><th>Sacado</th><th>Vlr. Aberto</th><th>Emissão</th><th>Saída</th><th>Rótulo</th></tr></thead><tbody>
-     ${g.it.sort((a,c)=>c.r[2]-a.r[2]).map(x=>{const r=x.r,B=x.bb;return`<tr><td class="num">${esc(r[1])}</td><td class="num">${esc(r[7]||"")}</td><td class="num small">${esc(String(r[0]).replace(/#\d+$/,""))}</td><td class="num">${esc(r[5])}</td><td class="num">${fd(x.ad)}</td><td class="r num${x.dias>=g.lim?" bad-t":""}">${x.dias===0?"hoje":x.dias+" d"}</td><td class="num">${esc(r[19]||"—")}</td><td>${esc(nomeB(B.sac[r[4]]||""))}</td><td class="r num">${money(r[2])}</td><td class="num">${r[10]?fd(Core.serialISO(r[10])):"—"}</td><td class="num">${r[9]?fd(Core.serialISO(r[9])):"—"}</td><td class="small">${esc(B.rot[r[8]]||"")}</td></tr>`}).join("")}</tbody></table></div>
+     <div class="tw"><table class="grid"><thead><tr><th>Cód. Cedente</th><th>Seu número</th><th>Título</th><th>Aditivo</th><th>Data do aditivo</th><th>Dias</th><th>Prazo</th><th>Cód. Sacado</th><th>Sacado</th><th>Vlr. Aberto</th><th>Merc. Ent.</th><th>Emissão</th><th>Saída</th><th>Rótulo</th></tr></thead><tbody>
+     ${g.it.sort((a,c)=>(c.fora-a.fora)||((c.dias??-1)-(a.dias??-1))||c.r[2]-a.r[2]).map(x=>{const r=x.r,B=x.bb;return`<tr><td class="num">${esc(r[1])}</td><td class="num">${esc(r[7]||"")}</td><td class="num small">${esc(String(r[0]).replace(/#\d+$/,""))}</td><td class="num">${esc(r[5])}</td><td class="num">${x.ad?fd(x.ad):"—"}</td><td class="r num${x.fora?" bad-t":""}">${x.dias==null?"—":x.dias===0?"hoje":x.dias+" d"}</td><td>${x.dias==null?"—":x.fora?'<span class="st bad">passou do prazo</span>':'<span class="st ok">no prazo</span>'}</td><td class="num">${esc(r[19]||"—")}</td><td>${esc(nomeB(B.sac[r[4]]||""))}</td><td class="r num">${money(r[2])}</td><td class="c">${temMerc?"FALSE":"—"}</td><td class="num">${r[10]?fd(Core.serialISO(r[10])):"—"}</td><td class="num">${r[9]?fd(Core.serialISO(r[9])):"—"}</td><td class="small">${esc(B.rot[r[8]]||"")}</td></tr>`}).join("")}</tbody></table></div>
      <div class="fbar"><button class="btn sm" data-act="fatTodas" data-id="${esc(g.cod)}">Ver com todas as colunas da base</button><button class="btn sm" data-act="ced" data-id="${esc(g.cod)}">Abrir ficha do cedente</button></div></fieldset>`).join(""):'<p class="muted">Nenhum título faturizado novo sem motivo nesta base.</p>'}`}
 
 /* ---------- CEDENTES E SACADOS (dash + síntese do risco) ---------- */
@@ -2634,7 +2638,7 @@ document.addEventListener("click",async e=>{
     case"convMeu":if(SBC.user)copiarConvite(SBC.user.email.toLowerCase());break;
     case"gDash":geralBaixarDash();break;
     case"gSub":S.gSub=el.dataset.v;render();break;
-    case"fatTodas":{const d=ultimo();const b=await loadBase(d);if(!b||!b.car)break;const g=fatLista(d,b).find(x=>x.cod===id);if(g)mostrarTit(`${nomeB(g.nome)} · VAZIOS`,g.it,fd(d),{h:"Dias desde o aditivo",f:x=>x.dias+" d"},d);break}
+    case"fatTodas":{const d=ultimo();const b=await loadBase(d);await loadRaw(d);if(!b||!b.car)break;const g=fatLista(d,b).find(x=>x.cod===id);if(g)mostrarTit(`${nomeB(g.nome)} · VAZIOS`,g.it,fd(d),{h:"Dias desde o aditivo",f:x=>x.dias==null?"—":x.dias+" d"+(x.fora?" (passou do prazo)":"")},d);break}
     case"gSacTit":{const d=geralData();const b=await loadBase(d);if(!b||!b.car)break;const B=b.car,k=el.dataset.s;
       const it=B.rows.filter(r=>String(r[1])===String(id)&&(String(r[19]||"")===k||String(B.sac[r[4]]||"")===k)).map(r=>({r,bb:B}));
       mostrarTit(`${nomeB(nomeCed(id))} · sacado ${nomeB(B.sac[it[0]?it[0].r[4]:0]||k)}`,it,fd(d),{h:"Situação",f:x=>Geral.CL[Geral.classe(B.mot[x.r[3]]||"")[0]]},d);break}
