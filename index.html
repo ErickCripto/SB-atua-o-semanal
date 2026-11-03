@@ -224,6 +224,16 @@ table.grid{border-collapse:collapse;width:100%}
 .ou{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:11.5px}.ou::before,.ou::after{content:"";flex:1;height:1px;background:var(--line)}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#20332D;color:#fff;padding:8px 16px;border-radius:6px;z-index:30;font-weight:bold;max-width:calc(100% - 32px)}
 @media (prefers-reduced-motion:no-preference){.win{animation:slide .15s ease-out}@keyframes slide{from{transform:translateX(18px);opacity:.7}}}
+.evh3{font-size:14px;margin:16px 0 4px;display:flex;align-items:center;gap:8px}.evh3 .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+.evh4{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut);margin:8px 0 4px}
+.evdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.evgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}@media(max-width:900px){.evgrid{grid-template-columns:1fr}}
+.evhb{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(60px,1fr) 80px 50px;gap:8px;align-items:center;font-size:12px;padding:3px 0}.evhb>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evbar{height:10px;background:var(--zebra);border-radius:5px;overflow:hidden}.evbar i{display:block;height:100%;background:var(--ok);border-radius:5px}
+.evdest{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px}@media(max-width:700px){.evdest{grid-template-columns:1fr}}
+.evl{list-style:none;margin:0;padding:0}.evl li{display:flex;gap:6px;align-items:baseline;font-size:12px;padding:3px 0;border-bottom:1px solid var(--line-l)}.evl .evnm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chipn{display:inline-block;background:var(--zebra);border-radius:9px;padding:0 7px;font-size:11px;color:var(--txt)}
+.evsvg{width:100%;height:auto;max-height:240px;background:#FAFCFB;border:1px solid var(--line-l);border-radius:4px}.evsvg .ax{font-size:10px;fill:var(--mut)}.evsvg .ax.b{font-weight:700;fill:var(--txt)}
 </style>
 <button class="menu" data-act="menu" aria-label="Menu: escolher visão"><span>MENU</span><b id="menuModo">EQUIPE</b></button>
 <div id="menuPop" class="menupop" hidden></div>
@@ -1032,10 +1042,10 @@ const Qprof=(function(){
     const pend=A.grupos.filter(g=>g.motivo&&!g.opdia&&!isOK(g.motivo));
     pend.forEach(g=>{
       const u=norm(g.motivo),fones=/DIFICULDADE|NÃO ATENDE|NAO ATENDE|^NA$/.test(u),nada=/NADA CONSTA/.test(u),c99=u.startsWith("C99");
-      const head=["Cod. Cedente","Nota Fiscal","Aditivo","Rótulo","Cod. Sacado","Sacado",...(fones?["Fone1","Fone2","Fone3"]:[]),"Status Checagem","Vlr. Aberto","Emissão NFe",...(nada?["Atraso"]:[]),"Venc. Orig."];
+      const head=["Nota Fiscal","Aditivo","Rótulo","Cod. Sacado","Sacado",...(fones?["Fone1","Fone2","Fone3"]:[]),"Status Checagem","Vlr. Aberto","Emissão NFe",...(nada?["Atraso"]:[]),"Venc. Orig."];
       const aoa=[head.map(h=>cell(h,H))];const vi=head.indexOf("Vlr. Aberto"),si=head.indexOf("Status Checagem");
       g.itens.forEach(i=>{const r=i.r;const em=dt(v(r,c.emis));const nfTxt=i.nfTxt!=null?i.nfTxt:txt(v(r,c.nf));
-        const row=[cell(v(r,c.codc),Cc),cell(nfTxt,Cc,true),cell(c.adit>=0?String(v(r,c.adit)==null?"":v(r,c.adit)):"",Cc,true),cell(v(r,c.rot),Cc),cell(v(r,c.cods),Cc),cell(v(r,c.sac),Cc),
+        const row=[cell(nfTxt,Cc,true),cell(c.adit>=0?String(v(r,c.adit)==null?"":v(r,c.adit)):"",Cc,true),cell(v(r,c.rot),Cc),cell(v(r,c.cods),Cc),cell(v(r,c.sac),Cc),
           ...(fones?[cell(v(r,c.f1>=0?c.f1:c.fone),Cc),cell(v(r,c.f2),Cc),cell(v(r,c.cel),Cc)]:[]),
           cell(i.motivo,c99?red(Cc):Cc),cell(i.valor,Cm),cell(em,Cd),...(nada?[cell(em instanceof Date?Math.round((A.hoje-em)/864e5):"",Cc)]:[]),cell(dt(v(r,c.venc)),Cd)];
         aoa.push(row)});
@@ -1315,6 +1325,9 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 }
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
+ {v:"2026.11.03a",nome:"Beta 1.8",data:"03/11/2026",itens:[
+  {beta:true,texto:"<b>Evolução do mês (Carteiras):</b> no fim da aba Carteiras, o resumo do mês por semana (confirmados, entradas, saídas do risco, C99, pendentes, índice e carteira), como as confirmações foram feitas, destaques por cedente, tabela por rótulo, gráficos de entradas/saídas, confirmados e índice, resumo por dia ou por semana e o texto do e-mail do resumo pronto para copiar."},
+  "<b>Planilha de pendências:</b> as abas de motivo não trazem mais o Cod. Cedente (ele continua só na aba BASE)."]},
  {v:"2026.10.30e",nome:"Beta 1.7",data:"30/10/2026",itens:[
   {beta:true,texto:"<b>Observação do sacado:</b> em todas as telas com sacados (Pesquisar cedente, VAZIOS, ficha do cedente, Base para chamados e listas de títulos), clique em “+ observação” para anotar algo sobre o sacado (ex.: só atende por WhatsApp). Vale para todos os cedentes e títulos daquele sacado e fica com histórico."}]},
  {v:"2026.10.30d",nome:"Beta 1.6",data:"30/10/2026",itens:[
@@ -1329,7 +1342,7 @@ const NOVIDADES=[
   "<b>Pesquisar cedente:</b> clicando no sacado, abrem os títulos dele com todas as colunas e a situação de cada um."]},
  {v:"2026.10.29b",nome:"Beta 1.2",data:"29/10/2026",itens:[
   "<b>Detalhes dos títulos:</b> além do que já aparecia, agora mostram sempre Cód. Cedente, Aditivo, Cód. Sacado, cidade/UF do sacado, data de entrega, vencimento, KM e Prazo NF.",
-  "<b>Planilha de pendências:</b> cada aba de motivo traz também Cod. Cedente e Aditivo, mantendo as colunas de antes.",
+  "<b>Planilha de pendências:</b> cada aba de motivo traz também o Aditivo, mantendo as colunas de antes.",
   "<b>Síntese do risco:</b> clicando duas vezes num valor da tabela dinâmica, o Excel abre os títulos com todas as colunas da base, na mesma ordem do arquivo (Filial, Seu Número, Tipo, Espécie… Assistente, Monitorada), mais Pricing, Regional, Rating Agro, Rating e Dificuldade, como no modelo.",
   "<b>Base para chamados:</b> a aba BASE da planilha de pendências, montada com a base registrada, também traz todas as colunas originais."]},
  {v:"2026.10.29",nome:"Beta 1.1",data:"29/10/2026",itens:[
@@ -2017,7 +2030,8 @@ function vCarteiras(){
     <td class="r num">${l.faltam?mk(l.faltam):'<span class="muted">—</span>'}</td><td>${spark(hist.map(d=>{const x=linhasDe(d).find(y=>y.cod===l.cod);return x?x.ind:null}),l.meta)}</td>
     <td class="wrap small">${an.proximo?esc(an.proximo):'<span class="muted">—</span>'}${an.atualizado?`<div class="sub">atualizado ${fds(an.atualizado)}</div>`:""}</td></tr>`}).join("")||'<tr><td colspan="14" class="muted">Nenhum cedente com esses filtros.</td></tr>'}</tbody></table></div>
   ${totbar([["Total valor aberto",money(tv)],["Valor confirmado",money(tcv)],["Índice da carteira",pc(tv?tcv/tv:null)],["Cedentes",L.length],["Abaixo da meta",cd.filter(l=>l.status==="Abaixo").length],["Faltam p/ meta",mk(L.reduce((a,l)=>a+(l.faltam||0),0))]])}
-  <p class="foot">Situação: abaixo da meta = Abaixo; entre a meta e a meta + ${pc(cfg.margem,0)} = Atenção; acima = OK. Meta por risco: Alto ${pc(cfg.metaAlto,0)}, Médio ${pc(cfg.metaMedio,0)}, Baixo ${pc(cfg.metaBaixo,0)}, sem risco ${pc(cfg.metaPadrao,0)}. Característica que pede para não atuar = Não atuar, sem meta. <button class="lk" data-act="copyTbl" data-id="tCart">Copiar tabela</button></p>`;
+  <p class="foot">Situação: abaixo da meta = Abaixo; entre a meta e a meta + ${pc(cfg.margem,0)} = Atenção; acima = OK. Meta por risco: Alto ${pc(cfg.metaAlto,0)}, Médio ${pc(cfg.metaMedio,0)}, Baixo ${pc(cfg.metaBaixo,0)}, sem risco ${pc(cfg.metaPadrao,0)}. Característica que pede para não atuar = Não atuar, sem meta. <button class="lk" data-act="copyTbl" data-id="tCart">Copiar tabela</button></p>
+  ${vEvolucao()}`;
 }
 
 /* ---------- TRANCHE ---------- */
@@ -2706,6 +2720,9 @@ document.addEventListener("click",async e=>{
     case"atuF":S.atuF=el.dataset.v;render();break;
     case"aF":S.aF=el.dataset.v;render();break;
     case"relTab":S.relTab=el.dataset.v;render();break;
+    case"evTab":S.evTab=el.dataset.v;render();break;
+    case"evRot":{const v=el.dataset.v;const R=S.evRots||[];S.evRots=R.includes(v)?R.filter(x=>x!==v):[...R,v];render();break}
+    case"evRotLimpa":S.evRots=[];render();break;
     case"relBase":S.relBase=el.dataset.v;render();break;
     case"verRot":S.fRot=el.dataset.v;S.view="carteiras";location.hash="carteiras";render();break;
     case"chF":S.chF=el.dataset.v;render();break;
@@ -2783,6 +2800,7 @@ document.addEventListener("change",async e=>{
   if(t.dataset.chf&&t.dataset.id){chCampo(t.dataset.id,t.dataset.chf,t.value.trim());return}
   if(t.id==="bkFile"&&t.files[0]){backupLer(t.files[0]);t.value="";return}
   if(t.dataset.fk){setDone(t.dataset.fk,t.dataset.fid,t.checked);return}
+  if(t.id==="evMes"){S.evMes=t.value;S.evRots=[];render()}
   if(t.id==="selDia"){S.dia=t.value;S.cmp=anterior(S.dia);render()}
   if(t.id==="selCmp"){S.cmp=t.value||"";render()}
   if(t.id==="relDia"){S.relDia=t.value;S.relCmp=anterior(t.value);render()}
@@ -2819,6 +2837,196 @@ document.addEventListener("drop",e=>{const d=e.target.closest&&e.target.closest(
 const VIEWS=["faturizados","controle","anotacoes","atuacao","carteiras","tranche","relatorios","chamados","parecer","qprof","ajustes","geral"];
 const GHASH={pesquisar:"pesq",dashboard:"down",base:"imp"};
 function fromHash(){const h=location.hash.slice(1);if(GHASH[h]){S.view="geral";S.gSub=GHASH[h]}else if(VIEWS.includes(h))S.view=h}
+/* ---------- EVOLUÇÃO DO MÊS (semana, rótulo, gráficos, resumo por dia e e-mail) ---------- */
+const Evol=(()=>{
+  const Z=()=>({q:0,v:0}),ad=(o,v)=>{o.q++;o.v+=v};
+  const MOV=["ent","entConf","liq","liqSem","conf","res","prob","npend"];
+  const blank=(k,nome)=>{const o={k,nome:nome||"",n:0,v:0,cv:0,pend:Z()};MOV.forEach(m=>o[m]=Z());return o};
+  const rotDe=(b,r)=>String((b.rot&&r[8]!=null?b.rot[r[8]]:"")||"(sem rótulo)").replace(/\s+/g," ").trim();
+  /* um dia: estoque do dia e movimento contra a base anterior */
+  function dia(bD,bP,cfg,ok){
+    const mD=Core.motInfo(bD,cfg),cD=bD.rows.map(r=>mD[r[3]].cls),kD=bD.rows.map(r=>mD[r[3]].kc);
+    const R={tot:blank("tot","Total"),ced:new Map(),rot:new Map(),forms:new Map(),temPrev:!!bP};
+    const G=(m,k,nome)=>{let o=m.get(k);if(!o){o=blank(k,nome);m.set(k,o)}else if(!o.nome&&nome)o.nome=nome;return o};
+    const tg=(b,r)=>[R.tot,G(R.ced,String(r[1]),b.ced&&b.ced[r[1]]),G(R.rot,rotDe(b,r))];
+    bD.rows.forEach((r,i)=>{if(!ok(bD,r))return;const v=r[2];for(const o of tg(bD,r)){o.n++;o.v+=v;o.cv+=v*kD[i];if(cD[i]===2||cD[i]===3)ad(o.pend,v)}});
+    if(!bP)return R;
+    const mP=Core.motInfo(bP,cfg),cP=bP.rows.map(r=>mP[r[3]].cls),posP=new Map();bP.rows.forEach((r,j)=>posP.set(r[0],j));
+    const emD=new Set(bD.rows.map(r=>r[0]));
+    bD.rows.forEach((r,i)=>{if(!ok(bD,r))return;const j=posP.get(r[0]);const T=tg(bD,r),v=r[2];
+      if(j===undefined){T.forEach(o=>{ad(o.ent,v);if(cD[i]===0)ad(o.entConf,v)});return}
+      const a=cP[j],b=cD[i];
+      if(a!==0&&b===0){T.forEach(o=>{ad(o.conf,v);if(a>=1&&a<=3)ad(o.res,v)});const t=String(bD.mot[r[3]]||"(sem motivo)").replace(/\s+/g," ").trim();const f=R.forms.get(t)||{t,q:0,v:0};f.q++;f.v+=v;R.forms.set(t,f)}
+      if(b===1&&a!==1)T.forEach(o=>ad(o.prob,v));
+      if((b===2||b===3)&&a!==2&&a!==3)T.forEach(o=>ad(o.npend,v))});
+    bP.rows.forEach((r,j)=>{if(emD.has(r[0])||!ok(bP,r))return;T2(tg(bP,r),r[2],cP[j])});
+    function T2(T,v,c){T.forEach(o=>{ad(o.liq,v);if(c!==0)ad(o.liqSem,v)})}
+    return R;
+  }
+  /* período: estoque do fim, estoque do início (base anterior ao 1º dia) e soma do movimento */
+  function faixa(datas,DIA,prevOf){
+    if(!datas.length)return null;const fim=DIA[datas[datas.length-1]],p0=prevOf(datas[0]);const ini=p0&&DIA[p0]?DIA[p0]:DIA[datas[0]];
+    const partes=datas.map(d=>DIA[d]).filter(x=>x.temPrev);
+    const junta=(chave)=>{const out=new Map();const get=(o)=>{let t=out.get(o.k);if(!t){t=blank(o.k,o.nome);t.pn=0;t.pv=0;t.pcv=0;t.ppend=Z();t.noFim=false;t.noIni=false;out.set(o.k,t)}return t};
+      const it=x=>chave==="tot"?[x.tot]:[...x[chave].values()];
+      it(fim).forEach(o=>{const t=get(o);t.noFim=true;t.n=o.n;t.v=o.v;t.cv=o.cv;t.pend={...o.pend};t.nome=o.nome||t.nome});
+      it(ini).forEach(o=>{const t=get(o);t.noIni=true;t.pn=o.n;t.pv=o.v;t.pcv=o.cv;t.ppend={...o.pend};if(!t.nome)t.nome=o.nome});
+      partes.forEach(p=>it(p).forEach(o=>{const t=get(o);MOV.forEach(m=>{t[m].q+=o[m].q;t[m].v+=o[m].v})}));return out};
+    const forms=new Map();partes.forEach(p=>p.forms.forEach(f=>{const o=forms.get(f.t)||{t:f.t,q:0,v:0};o.q+=f.q;o.v+=f.v;forms.set(f.t,o)}));
+    return{tot:junta("tot").get("tot"),ced:junta("ced"),rot:junta("rot"),forms:[...forms.values()].sort((a,b)=>b.v-a.v),
+      ini:p0&&DIA[p0]?p0:datas[0],fim:datas[datas.length-1],dias:datas.filter(d=>DIA[d].temPrev),temMov:partes.length>0};
+  }
+  return{dia,faixa,rotDe};
+})();
+
+const MESES_PT=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const WD3=["dom","seg","ter","qua","qui","sex","sáb"];
+const fDW=s=>WD3[toD(s).getDay()]+" "+fds(s);
+const fMi=n=>{if(n==null||isNaN(n))return"—";const a=Math.abs(n),s=n<0?"−":"";return a>=1e6?s+"R$ "+(a/1e6).toLocaleString("pt-BR",{maximumFractionDigits:2})+" mi":a>=1e3?s+"R$ "+Math.round(a/1e3).toLocaleString("pt-BR")+" mil":s+"R$ "+Math.round(a).toLocaleString("pt-BR")};
+const fRint=n=>"R$ "+Math.round(n||0).toLocaleString("pt-BR");
+const fPP=n=>(n>=0?"+":"−")+(Math.abs(n)*100).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+" p.p.";
+const cort=(s,n)=>{s=nomeB(String(s||"")).trim();return s.length>n?s.slice(0,n).trim()+"…":s};
+const ixOf=o=>o&&o.v>0?o.cv/o.v:null,pixOf=o=>o&&o.pv>0?o.pcv/o.pv:null;
+
+/* carrega as bases do mês (e a última antes dele) */
+function evolBases(mes){
+  S.evB=S.evB||{};const ds=regDatas();const key=mes+"|"+ds.join(",");const E=S.evB[mes];if(E&&E.key===key)return E;
+  if(E&&E.loading)return E;
+  const noMes=ds.filter(d=>d.slice(0,7)===mes),antes=ds.filter(d=>d<mes+"-01").reverse().slice(0,6);
+  const st={key,loading:true,B:[],feitos:0,total:noMes.length};S.evB[mes]=st;
+  (async()=>{const B=[];for(const d of noMes){const b=await loadBase(d).catch(()=>null);if(b&&b.car)B.push(d);st.feitos++}
+    for(const d of antes){const b=await loadBase(d).catch(()=>null);if(b&&b.car){B.unshift(d);break}}
+    st.B=B;st.loading=false;if(S.evCM)S.evCM.clear();render()})();
+  return st;
+}
+function evolCalc(mes,E,rots){
+  rots=rots||S.evRots||[];const cfg=S.cfg;S.evCM=S.evCM||new Map();
+  const key=[mes,E.key,S.visao,S.visaoPessoa,rots.join("¦"),cfg.motivosConf.length,cfg.motivosC99.length,cfg.motivosNA.length,cfg.motivosNC.length,cfg.soMonitorados].join("|");if(S.evCM.has(key))return S.evCM.get(key);if(S.evCM.size>6)S.evCM.clear();
+  const ok=(b,r)=>{if(cfg.soMonitorados&&r[16]!==1)return false;if(!vis(String(r[1])))return false;return!rots.length||rots.includes(Evol.rotDe(b,r))};
+  const DIA={};E.B.forEach((d,i)=>{const bD=S.bases.get(d),bP=i?S.bases.get(E.B[i-1]):null;DIA[d]=Evol.dia(bD.car,bP&&bP.car,cfg,ok)});
+  const prevOf=d=>{const i=E.B.indexOf(d);return i>0?E.B[i-1]:null};
+  const noMes=E.B.filter(d=>d.slice(0,7)===mes);
+  const res={key,DIA,prevOf,noMes,mesF:Evol.faixa(noMes,DIA,prevOf)};S.evCM.set(key,res);return res;
+}
+function semanasDoMes(mes){const y=+mes.slice(0,4),m=+mes.slice(5,7);const ult=new Date(y,m,0).getDate();const ini=mes+"-01",fim=mes+"-"+String(ult).padStart(2,"0");
+  const out=[];let s=monday(ini);while(s<=fim){const a=s<ini?ini:s,b0=addDays(s,4),b=b0>fim?fim:b0;if(a<=b)out.push({mon:s,a,b,ate:addDays(s,6)});s=addDays(s,7)}return out}
+
+/* gráficos em SVG */
+function svgBarras(pts,o){
+  if(!pts.length)return`<p class="hint">${o.vazio}</p>`;
+  const W=640,H=190,pt=10,pb=24,pl=64,pr=8;const up=Math.max(0,...pts.map(p=>p.up||0)),dn=Math.max(0,...pts.map(p=>p.dn||0));const tot=(up+dn)||1;
+  const ih=H-pt-pb,y0=pt+ih*(up/tot);const bw=Math.min(46,(W-pl-pr)/pts.length*.6),step=(W-pl-pr)/pts.length;
+  const yl=[up?`<text x="${pl-6}" y="${pt+8}" text-anchor="end" class="ax">${fMi(up)}</text>`:"",`<text x="${pl-6}" y="${y0+4}" text-anchor="end" class="ax">0</text>`,dn?`<text x="${pl-6}" y="${H-pb}" text-anchor="end" class="ax">−${fMi(dn).replace("R$ ","")}</text>`:""].join("");
+  const lab=Math.max(1,Math.ceil(40/step));
+  const bars=pts.map((p,i)=>{const x=pl+step*i+(step-bw)/2;const hu=ih*(p.up||0)/tot,hd=ih*(p.dn||0)/tot;
+    return`<g><title>${esc(p.tip)}</title>${hu?`<rect x="${x}" y="${y0-hu}" width="${bw}" height="${hu}" rx="3" fill="${o.cu}"/>`:""}${hd?`<rect x="${x}" y="${y0}" width="${bw}" height="${hd}" rx="3" fill="${o.cd}"/>`:""}${i%lab===0||i===pts.length-1?`<text x="${x+bw/2}" y="${H-6}" text-anchor="middle" class="ax">${p.lab}</text>`:""}</g>`}).join("");
+  return`<svg viewBox="0 0 ${W} ${H}" class="evsvg" role="img" aria-label="${esc(o.aria)}"><line x1="${pl}" x2="${W-pr}" y1="${y0}" y2="${y0}" stroke="#9aa8a3"/>${yl}${bars}</svg>`;
+}
+function svgLinha(pts,aria){
+  const v=pts.filter(p=>p.y!=null);if(v.length<2)return'<p class="hint">Precisa de pelo menos duas posições no mês.</p>';
+  const W=640,H=190,pt=12,pb=24,pl=40,pr=46;let lo=Math.min(...v.map(p=>p.y)),hi=Math.max(...v.map(p=>p.y));lo=Math.max(0,Math.floor((lo-.03)*20)/20);hi=Math.min(1,Math.ceil((hi+.03)*20)/20);if(hi-lo<.05)hi=lo+.05;
+  const step=(W-pl-pr)/Math.max(1,pts.length-1),Y=y=>pt+(H-pt-pb)*(1-(y-lo)/(hi-lo)),X=i=>pl+step*i;
+  const grid=[0,1,2,3].map(k=>{const y=lo+(hi-lo)*k/3;return`<line x1="${pl}" x2="${W-pr}" y1="${Y(y)}" y2="${Y(y)}" stroke="#e3e9e7"/><text x="${pl-6}" y="${Y(y)+4}" text-anchor="end" class="ax">${pc(y,0)}</text>`}).join("");
+  const path=pts.map((p,i)=>p.y==null?null:[X(i),Y(p.y)]).filter(Boolean).map((q,i)=>(i?"L":"M")+q[0].toFixed(1)+","+q[1].toFixed(1)).join("");
+  const lab=Math.max(1,Math.ceil(40/step));const ul=v[v.length-1],ui=pts.indexOf(ul);
+  return`<svg viewBox="0 0 ${W} ${H}" class="evsvg" role="img" aria-label="${esc(aria)}">${grid}<path d="${path}" fill="none" stroke="#1B7A3D" stroke-width="2.2"/>${pts.map((p,i)=>`${p.y==null?"":`<circle cx="${X(i)}" cy="${Y(p.y)}" r="${i===ui?5:3.5}" fill="${p.reg?"#fff":"#1B7A3D"}" stroke="#1B7A3D" stroke-width="1.6"><title>${esc(p.tip)}</title></circle>`}${i%lab===0||i===pts.length-1?`<text x="${X(i)}" y="${H-6}" text-anchor="middle" class="ax">${p.lab}</text>`:""}`).join("")}<text x="${X(ui)+9}" y="${Y(ul.y)+4}" class="ax b">${pc(ul.y)}</text></svg>`;
+}
+
+function regTot(d){let v=0,cv=0,n=0;linhasDe(d).forEach(l=>{if(l.naCarteira&&vis(l.cod)){v+=l.valor;cv+=l.vconf;n+=l.tit}});return{v,cv,n}}
+function evolAbaixo(mes){const ds=regDatas().filter(d=>d.slice(0,7)===mes);const d=ds[ds.length-1];if(!d)return[];
+  return linhasDe(d).filter(l=>l.naCarteira&&vis(l.cod)&&l.status==="Abaixo"&&l.faltam>0).map(l=>({cod:l.cod,nome:l.nome,f:l.faltam,ind:l.ind,meta:l.meta})).sort((a,b)=>b.f-a.f)}
+
+function vEvolucao(){
+  if(!ehBeta())return"";const ds=regDatas();if(!ds.length)return"";
+  const meses=[...new Set(ds.map(d=>d.slice(0,7)))].sort().reverse();if(!S.evMes||!meses.includes(S.evMes))S.evMes=meses[0];const mes=S.evMes;
+  const nomeMes=MESES_PT[+mes.slice(5,7)-1]+"/"+mes.slice(0,4);
+  const cab=`<legend>Evolução do mês <span class="ubeta">BETA</span></legend><div class="fgrid"><label class="fl">Mês <select class="inp" id="evMes">${meses.map(m=>`<option value="${m}"${m===mes?" selected":""}>${MESES_PT[+m.slice(5,7)-1]}/${m.slice(0,4)}</option>`).join("")}</select></label>${(S.evRots||[]).length?`<span class="fl">Rótulos: <b>${esc(S.evRots.join(", "))}</b> <button class="lk" data-act="evRotLimpa">limpar</button></span>`:""}</div>`;
+  const E=evolBases(mes);
+  if(E.loading)return`<fieldset class="box">${cab}<p class="hint">Carregando as bases do mês título a título… (${E.feitos} de ${E.total})</p></fieldset>`;
+  if(!E.B.some(d=>d.slice(0,7)===mes))return`<fieldset class="box">${cab}<p class="hint">Não há base título a título salva em ${nomeMes}. Importe as bases do dia para ver a evolução.</p></fieldset>`;
+  const C=evolCalc(mes,E),M=C.mesF,t=M.tot;
+  const qv=o=>o&&o.q?`${fMi(o.v)} <small class="muted">${fN(o.q)}</small>`:'<span class="muted">0</span>';
+  /* tabela por semana */
+  const ult=C.noMes[C.noMes.length-1];
+  const sems=semanasDoMes(mes).map(w=>{const dd=C.noMes.filter(d=>d>=w.a&&d<=w.ate&&d.slice(0,7)===mes);return{...w,F:dd.length?Evol.faixa(dd,C.DIA,C.prevOf):null,futuro:w.a>ult}});
+  const linhas=[["Confirmados","#1B7A3D",x=>qv(x.conf),qv(t.conf),1],["Confirmados que estavam pendentes ou C99","",x=>qv(x.res),qv(t.res),1],["Entraram","#2F6FD6",x=>qv(x.ent),qv(t.ent),1],["Saíram do risco","#D9762B",x=>qv(x.liq),qv(t.liq),1],["Saíram do risco sem confirmação","",x=>qv(x.liqSem),qv(t.liqSem),1],["Novos C99","#B42318",x=>qv(x.prob),qv(t.prob),1],["Viraram pendentes (Não atende / Nada consta)","#E0A82E",x=>qv(x.npend),qv(t.npend),1],
+    ["Pendentes no fim da semana","",x=>qv(x.pend),qv(t.pend)+" "+(t.ppend?dvalInv(t.pend.v-t.ppend.v):""),0],["Índice no fim da semana","",x=>pc(ixOf(x)),pc(ixOf(t))+" "+dpp(ixOf(t)!=null&&pixOf(t)!=null?ixOf(t)-pixOf(t):null),0],["Carteira no fim da semana","",x=>fMi(x.v),fMi(t.v),0]];
+  const cel=(w,f,mov)=>{if(!w.F)return`<td class="r muted">${w.futuro?"—":"sem base"}</td>`;if(mov&&!w.F.temMov)return'<td class="r muted">base inicial</td>';return`<td class="r num">${f(w.F.tot)}</td>`};
+  const tSem=`<div class="tw"><table class="grid" id="tEvSem"><thead><tr><th></th>${sems.map(w=>`<th class="r">${fds(w.a)} a ${fds(w.b)}</th>`).join("")}<th class="r">Mês</th></tr></thead><tbody>${linhas.map(([l,c,f,tt,mov])=>`<tr><td>${c?`<i class="evdot" style="background:${c}"></i>`:""}${l}</td>${sems.map(w=>cel(w,f,mov)).join("")}<td class="r num"><b>${tt}</b></td></tr>`).join("")}</tbody></table></div>`;
+  /* formas de confirmação e destaques */
+  const F=M.forms,top=F.slice(0,7),resto=F.slice(7);if(resto.length)top.push({t:`Outros (${resto.length} motivos)`,q:resto.reduce((a,o)=>a+o.q,0),v:resto.reduce((a,o)=>a+o.v,0)});
+  const totF=F.reduce((a,o)=>a+o.v,0)||1,maxF=Math.max(1,...top.map(o=>o.v));
+  const formas=top.length?top.map(o=>`<div class="evhb"><span title="${esc(o.t)}">${esc(o.t)}</span><span class="evbar"><i style="width:${(100*o.v/maxF).toFixed(1)}%"></i></span><span class="r num">${fMi(o.v)}</span><span class="r num muted">${pc(o.v/totF)}</span></div>`).join(""):'<p class="hint">Nenhuma confirmação no mês.</p>';
+  const ceds=[...M.ced.values()];
+  const topConf=ceds.filter(o=>o.conf.q).sort((a,b)=>b.conf.v-a.conf.v).slice(0,5);
+  const quedas=ceds.filter(o=>o.noIni&&o.noFim&&o.pv>0&&o.v>0).map(o=>({o,d:ixOf(o)-pixOf(o)})).filter(x=>x.d<-.0005).sort((a,b)=>a.d-b.d).slice(0,5);
+  const probs=ceds.filter(o=>o.prob.q).sort((a,b)=>b.prob.v-a.prob.v).slice(0,5);
+  const abx=evolAbaixo(mes);
+  const li=(cod,nome,dir)=>`<li><button class="lk" data-act="ced" data-id="${esc(cod)}">${esc(cod)}</button> <span class="evnm" title="${esc(nomeB(nome))}">${esc(nomeB(nome))}</span><span class="r num">${dir}</span></li>`;
+  const bloco=(tit,itens,vazio)=>`<div><h4 class="evh4">${tit}</h4>${itens.length?`<ul class="evl">${itens.join("")}</ul>`:`<p class="hint">${vazio}</p>`}</div>`;
+  const dest=`<div class="evdest">${bloco("Mais confirmações",topConf.map(o=>li(o.k,o.nome,fMi(o.conf.v))),"Nenhuma confirmação.")}${bloco("Maiores quedas de índice",quedas.map(x=>li(x.o.k,x.o.nome,`<span class="dl down">▼ ${(Math.abs(x.d)*100).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})} p.p.</span> <small class="muted">${pc(ixOf(x.o))}</small>`)),"Nenhum cedente perdeu índice no mês.")}
+    ${bloco("Mais C99 novos",probs.map(o=>li(o.k,o.nome,fN(o.prob.q)+" tít. <small class='muted'>"+fMi(o.prob.v)+"</small>")),"Nenhum C99 novo.")}${bloco(`Abaixo da meta no fim do mês${abx.length?` <span class="chipn">${abx.length}</span>`:""}`,abx.slice(0,6).map(x=>li(x.cod,x.nome,`falta ${fMi(x.f)} <small class="muted">${pc(x.ind)} / meta ${pc(x.meta)}</small>`)),"Todos os cedentes estão na meta.")}</div>`;
+  /* por rótulo (sem o filtro de rótulo, para poder marcar) */
+  const rotsSel=S.evRots||[];const MR=rotsSel.length?evolCalc(mes,E,[]).mesF:M;
+  const R=[...MR.rot.values()].filter(o=>o.noFim||o.noIni).sort((a,b)=>b.v-a.v);
+  const cl=o=>o.q?`${fMi(o.v)} <small class="muted">${fN(o.q)}</small>`:'<span class="muted">0</span>';
+  const tRot=`<div class="tw"><table class="grid" id="tEvRot"><thead><tr><th>Rótulo</th><th class="r">Carteira ${fds(M.fim)}</th><th class="r">Títulos</th><th class="r">Índice</th><th class="r">Confirmados</th><th class="r">Entraram</th><th class="r">Saíram do risco</th><th class="r">Novos C99</th><th class="r">Pendentes</th></tr></thead><tbody>${R.map(o=>`<tr class="${rotsSel.includes(o.k)?"hot":""}"><td><button class="lk" data-act="evRot" data-v="${esc(o.k)}" title="Filtrar a evolução por este rótulo"><b>${esc(o.k)}</b></button></td><td class="r num">${o.noFim?fRint(o.v):"—"}</td><td class="r num">${o.noFim?fN(o.n):"—"}</td><td class="r num">${pc(ixOf(o))}</td><td class="r num">${cl(o.conf)}</td><td class="r num">${cl(o.ent)}</td><td class="r num">${cl(o.liq)}</td><td class="r num">${o.prob.q?cl(o.prob):'<span class="muted">0</span>'}</td><td class="r num">${o.noFim?fMi(o.pend.v):"—"}</td></tr>`).join("")||'<tr><td colspan="9" class="muted">A base não traz a coluna Rótulo.</td></tr>'}</tbody></table></div>`;
+  /* gráficos */
+  const dm=C.noMes.filter(d=>C.DIA[d].temPrev);
+  const gMov=svgBarras(dm.map(d=>{const x=C.DIA[d].tot;return{lab:fds(d),up:x.ent.v,dn:x.liq.v,tip:`${fDW(d)}: entraram ${fMi(x.ent.v)} (${x.ent.q}), saíram ${fMi(x.liq.v)} (${x.liq.q})`}}),{cu:"#2F6FD6",cd:"#D9762B",vazio:"Precisa de pelo menos duas bases para ver entradas e saídas.",aria:"Entradas e saídas do risco por dia"});
+  const gConf=svgBarras(dm.map(d=>{const x=C.DIA[d].tot;return{lab:fds(d),up:x.conf.v,tip:`${fDW(d)}: confirmados ${fMi(x.conf.v)} (${x.conf.q})`}}),{cu:"#1B7A3D",cd:"#1B7A3D",vazio:"Precisa de pelo menos duas bases.",aria:"Confirmados no dia"});
+  const serie=new Map();const comeco=M.ini&&M.ini<mes+"-01"?M.ini:null;
+  regDatas().filter(d=>d.slice(0,7)===mes||d===comeco).forEach(d=>{const r=regTot(d);serie.set(d,{d,y:r.v>0?r.cv/r.v:null,reg:true})});
+  [...(comeco?[comeco]:[]),...C.noMes].forEach(d=>{const x=C.DIA[d].tot;serie.set(d,{d,y:ixOf(x),reg:false})});
+  const sp=[...serie.values()].sort((a,b)=>a.d<b.d?-1:1).map(p=>({...p,lab:fds(p.d),tip:`${fDW(p.d)}: ${pc(p.y)}${p.reg?" (só registro diário)":""}`}));
+  /* resumo por dia / por semana */
+  const porSem=S.evTab==="semana";
+  const head=`<thead><tr><th>${porSem?"Semana":"Dia"}</th><th class="r">Carteira</th><th class="r">Títulos</th><th class="r">Índice</th><th class="r">Variação</th><th class="r">Confirmados</th><th class="r">Entraram</th><th class="r">Saíram do risco</th><th class="r">Saíram sem confirmação</th><th class="r">Novos C99</th><th class="r">Pendentes no fim</th></tr></thead>`;
+  const linhaMov=(lab,x,temMov,ini)=>{const ix=ixOf(x);if(!temMov)return`<tr><td>${lab}</td><td class="r num">${fRint(x.v)}</td><td class="r num">${fN(x.n)}</td><td class="r num">${pc(ix)}</td><td colspan="7" class="muted">${ini}</td></tr>`;
+    return`<tr><td>${lab}</td><td class="r num">${fRint(x.v)}</td><td class="r num">${fN(x.n)}</td><td class="r num">${pc(ix)}</td><td class="r">${dpp(ix!=null&&pixOf(x)!=null?ix-pixOf(x):null)}</td><td class="r num">${qv(x.conf)}</td><td class="r num">${qv(x.ent)}</td><td class="r num">${qv(x.liq)}</td><td class="r num">${qv(x.liqSem)}</td><td class="r num">${qv(x.prob)}</td><td class="r num">${qv(x.pend)} ${x.ppend?dvalInv(x.pend.v-x.ppend.v):""}</td></tr>`};
+  let corpo;
+  if(porSem)corpo=sems.filter(w=>w.F).reverse().map(w=>linhaMov(`${fds(w.a)} a ${fds(w.b)} <small class="muted">${w.F.dias.length} ${w.F.dias.length===1?"dia":"dias"}</small>`,w.F.tot,w.F.temMov,"Primeira semana carregada: o movimento aparece a partir do segundo dia")).join("");
+  else{const rows=C.noMes.map(d=>({d,F:Evol.faixa([d],C.DIA,C.prevOf)}));const temB=new Set(C.noMes);
+    regDatas().filter(d=>d.slice(0,7)===mes&&!temB.has(d)).forEach(d=>rows.push({d,reg:regTot(d)}));rows.sort((a,b)=>a.d<b.d?1:-1);
+    corpo=rows.map(r=>r.reg?`<tr><td>${fDW(r.d)}</td><td class="r num">${fRint(r.reg.v)}</td><td class="r num">${fN(r.reg.n)}</td><td class="r num">${pc(r.reg.v>0?r.reg.cv/r.reg.v:null)}</td><td colspan="7" class="muted">Só no REGISTRO DIÁRIO (sem a base deste dia, não dá para ver o movimento)</td></tr>`
+      :linhaMov(`${fDW(r.d)}${r.F.temMov?` <small class="muted">vs ${fds(C.prevOf(r.d))}</small>`:""}`,r.F.tot,r.F.temMov,"Primeira base carregada: serve de base para comparar a próxima")).join("")}
+  const tDia=`<div class="tw"><table class="grid" id="tEvDia">${head}<tbody>${corpo}</tbody></table></div>`;
+  const txt=evolEmail(mes,C,M,quedas,topConf,abx);
+  return`<fieldset class="box">${cab}
+   <h3 class="evh3">Resumo do mês · ${nomeMes}${M.ini?` <span class="muted small">(desde ${fds(M.ini)})</span>`:""}</h3>${tSem}
+   <p class="foot">Soma do que mudou em cada dia, comparando a base do dia com a anterior carregada. <button class="lk" data-act="copyTbl" data-id="tEvSem">Copiar tabela</button></p>
+   <div class="evgrid"><div><h3 class="evh3">Como as confirmações foram feitas</h3><p class="hint">Motivo Entrega dos títulos que passaram a confirmado no mês. Percentual sobre o total confirmado.</p>${formas}</div><div><h3 class="evh3">Destaques por cedente</h3>${dest}</div></div>
+   <h3 class="evh3">Por rótulo</h3><p class="hint">Carteira por rótulo · ${nomeMes}${M.ini?" (desde "+fds(M.ini)+")":""}. Clique nos rótulos para filtrar a evolução por eles (pode marcar vários); clique de novo para desmarcar.</p>${tRot}
+   <p class="foot"><button class="lk" data-act="copyTbl" data-id="tEvRot">Copiar tabela</button></p>
+   <h3 class="evh3">Entradas e saídas do risco por dia</h3><p class="hint"><i class="evdot" style="background:#2F6FD6"></i>Entraram (acima da linha) <i class="evdot" style="background:#D9762B;margin-left:10px"></i>Saíram do risco (abaixo: liquidados ou vencidos)</p>${gMov}
+   <div class="evgrid"><div><h3 class="evh3">Confirmados no dia</h3><p class="hint">Títulos que estavam sem confirmação no dia anterior e passaram a ter motivo de confirmação.</p>${gConf}</div><div><h3 class="evh3">Índice de confirmação</h3><p class="hint">Valor confirmado ÷ valor em aberto no fim de cada dia (bolinha vazia = só registro diário).</p>${svgLinha(sp,"Índice de confirmação")}</div></div>
+   <h3 class="evh3">${porSem?"Resumo por semana":"Resumo por dia"} <span class="right">${seg("evTab",porSem?"semana":"dia",[["dia","Por dia"],["semana","Por semana"]])} <button class="btn sm" data-act="copyTbl" data-id="tEvDia">Copiar tabela</button></span></h3>${tDia}
+   <fieldset class="box in"><legend>E-mail do resumo <button class="btn sm pri" data-act="copyTxt" data-t="${esc(txt)}">Copiar e-mail</button></legend><pre class="pre">${esc(txt)}</pre></fieldset>
+  </fieldset>`;
+}
+function dvalInv(n){if(n==null||isNaN(n)||Math.abs(n)<.5)return"";return`<span class="dl ${n<0?"up":"down"}">${n<0?"▼":"▲"} ${fMi(Math.abs(n))}</span>`}
+function evolEmail(mes,C,M,quedas,topConf,abx){
+  const t=M.tot;const h=new Date().getHours();const saud=h<12?"Bom dia":h<18?"Boa tarde":"Boa noite";
+  const b=S.bases.get(M.fim);const reg=(b&&b.car&&b.car.regional)||"";
+  const alvo=reg?"a Regional "+reg:"à carteira de "+nomeB(meuNome());const alvo2=reg?"da Regional "+reg:"da carteira";
+  const ix=ixOf(t),px=pixOf(t);const totF=M.forms.reduce((a,o)=>a+o.v,0)||1;
+  const L=[`${saud}, Pessoal!`,`Segue abaixo e em anexo o resumo da atuação referente ${alvo}:`,`Resumo ${alvo2} até o momento!`];
+  const it=s=>L.push("• "+s);
+  it(`Dias com base: ${M.dias.map(fDW).join(", ")||"—"};`);
+  it(`Confirmados: ${fN(t.conf.q)} títulos, ${fRint(t.conf.v)}`+(t.res.q?`, sendo ${fN(t.res.q)} que estavam pendentes ou com C99 (${fRint(t.res.v)})`:"")+".");
+  if(ix!=null&&px!=null)it(`Índice de confirmação: de ${pc(px)} (${fds(M.ini)}) para ${pc(ix)} (${fds(M.fim)}), ${fPP(ix-px)}`);
+  it(`Entraram: ${fN(t.ent.q)} títulos - ${fRint(t.ent.v)}`+(t.entConf.q?` (${fN(t.entConf.q)} já ${t.entConf.q===1?"entrou confirmado":"entraram confirmados"})`:"")+".");
+  it(`Saíram do risco: ${fN(t.liq.q)} títulos - ${fRint(t.liq.v)}`+(t.liq.q?`; ${fN(t.liqSem.q)} / sem confirmação (${fRint(t.liqSem.v)})`:"")+".");
+  it(`Novos C99 (problema): ${t.prob.q?fN(t.prob.q)+" títulos - "+fRint(t.prob.v)+".":"nenhum."}`);
+  it(`Pendentes (Não atende / Nada consta): ${fN(t.pend.q)} títulos - ${fRint(t.pend.v)};`);
+  if(M.forms.length)it(`Formas de confirmação mais usadas: ${M.forms.slice(0,3).map(o=>`${o.t} (${pc(o.v/totF)})`).join("; ")}.`);
+  if(topConf.length)it(`Cedentes com mais confirmações: ${topConf.slice(0,3).map(o=>`${cort(o.nome,28)} (${fMi(o.conf.v)})`).join("; ")}.`);
+  if(quedas.length)it(`Atenção, índice caiu: ${quedas.slice(0,3).map(x=>`${cort(x.o.nome,28)} (${fPP(x.d).replace("+","")})`).join("; ")}.`);
+  it(`Abaixo da meta no fim do mês: ${abx.length?`${abx.length} ${abx.length===1?"cedente":"cedentes"}, faltando ${fRint(abx.reduce((a,x)=>a+x.f,0))} em confirmação. Maiores: ${abx.slice(0,3).map(x=>`${cort(x.nome,28)} (falta ${fMi(x.f)})`).join("; ")}.`:"nenhum."}`);
+  it(`Carteira no fim do mês: ${fN(t.n)} títulos - ${fRint(t.v)} - ${pc(ix)} Confirmado!`);
+  L.push("Att,");return L.join("\n");
+}
+
 window.addEventListener("hashchange",()=>{fromHash();render()});
 fromHash();render();store.init();
 })();
