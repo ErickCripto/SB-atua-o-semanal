@@ -1109,10 +1109,20 @@ const CFG_PADRAO={metaPadrao:.5,margem:.1,metaAlto:.4,metaMedio:.3,metaBaixo:.1,
   motivosC99:["C99"],motivosNA:["Não atende"],motivosNC:["Nada consta"],metasEspeciais:{},metasTranchePropria:{}};
 
 /* ---------- estado ---------- */
-const S={mode:"loading",view:"atuacao",cfg:{...CFG_PADRAO},risco:{},lim:{},grupos:{},diario:{},car:{},anot:{},regs:{},chamados:{},parecer:{},qprofs:{},feito:{},obsSac:{},
+/* cada carteira tem a sua base (p_<pessoa>~data) e a equipe tem outra (eq~data); posições antigas sem prefixo valem como reserva */
+const NS_SEP="~";let regsVer=0,regsCache=null;
+const slugN=x=>String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"sem-nome";
+function nsAtual(){return S.visao==="equipe"?"eq":"p_"+slugN(S.visao==="pessoa"?S.visaoPessoa:meuNome())}
+function bk(d){if(!d||String(d).includes(NS_SEP))return d;const k=nsAtual()+NS_SEP+d;return S.regsAll[k]?k:S.regsAll[d]?d:k}
+const regK=d=>nsAtual()+NS_SEP+d;
+const regPut=(id,v)=>{if(v==null)delete S.regsAll[id];else S.regsAll[id]=v;regsVer++};
+class NSMap extends Map{get(k){return super.get(bk(k))}has(k){return super.has(bk(k))}set(k,v){return super.set(bk(k),v)}delete(k){return super.delete(bk(k))}}
+const S={regsAll:{},mode:"loading",view:"atuacao",cfg:{...CFG_PADRAO},risco:{},lim:{},grupos:{},diario:{},car:{},anot:{},chamados:{},parecer:{},qprofs:{},feito:{},obsSac:{},
   dia:null,cmp:null,fStatus:"todos",fDia:"todos",fRisco:"todos",fGrupo:"",fRot:"",busca:"",sort:"status",
   atuTab:null,atuF:"ab",atuQ:"",aQ:"",aF:"todos",aDia:"",relTab:"mudou",relBase:"car",relDia:null,relCmp:null,
-  semRef:today(),parSexta:friday(today()),chF:"abertos",raw:null,armed:null,Q:null,bases:new Map(),loadingBase:new Set(),resp:{},escolher:(()=>{try{return!sessionStorage.getItem("mesa_escolheu")}catch(e){return true}})(),visao:(()=>{try{return localStorage.getItem("mesa_visao")||"equipe"}catch(e){return"equipe"}})(),menuAberto:false};
+  semRef:today(),parSexta:friday(today()),chF:"abertos",raw:null,armed:null,Q:null,bases:new NSMap(),loadingBase:new Set(),resp:{},escolher:(()=>{try{return!sessionStorage.getItem("mesa_escolheu")}catch(e){return true}})(),visao:(()=>{try{return localStorage.getItem("mesa_visao")||"equipe"}catch(e){return"equipe"}})(),menuAberto:false};
+Object.defineProperty(S,"regs",{get(){const ns=nsAtual();if(regsCache&&regsCache.v===regsVer&&regsCache.ns===ns)return regsCache.m;const m={};const E=Object.entries(S.regsAll);
+  for(const[id,v]of E)if(!id.includes(NS_SEP))m[id]=v;for(const[id,v]of E){const i=id.indexOf(NS_SEP);if(i>0&&id.slice(0,i)===ns)m[id.slice(i+1)]=v}regsCache={v:regsVer,ns,m};return m},set(m){S.regsAll={...m};regsVer++}});
 const refObj=()=>({cfg:S.cfg,risco:S.risco,lim:S.lim,carac:Object.fromEntries(Object.entries(S.car).map(([k,v])=>[k,v.texto])),anot:S.anot});
 const regDatas=()=>Object.keys(S.regs).sort();
 const regDe=d=>d&&S.regs[d]?S.regs[d]:null;
@@ -1165,7 +1175,7 @@ const store={kind:null,db:null,
     if(col==="base")return;
     if(col==="cfg"){if(id==="geral")S.cfg=val?{...CFG_PADRAO,...val}:{...CFG_PADRAO};const k={risco:"risco",limites:"lim",grupos:"grupos",diario:"diario",responsaveis:"resp"}[id];if(k)S[k]=val?val.map:{}}
     else if(col==="feito"){if(val==null)delete S.feito[id];else S.feito[id]=val.ids}
-    else{const k={caract:"car",anot:"anot",reg:"regs",chamados:"chamados",parecer:"parecer",qprof:"qprofs",obssac:"obsSac"}[col];if(!k)return;if(val==null)delete S[k][id];else S[k][id]=val}
+    else if(col==="reg")regPut(id,val);else{const k={caract:"car",anot:"anot",chamados:"chamados",parecer:"parecer",qprof:"qprofs",obssac:"obsSac"}[col];if(!k)return;if(val==null)delete S[k][id];else S[k][id]=val}
   },
   local(col,id,val){this.apply(col,id,val);this.persist();render()},
   async set(col,id,val){if(this.kind==="db")return this.db.collection(col).doc(id).set(val);
@@ -1176,7 +1186,7 @@ const store={kind:null,db:null,
   async del(col,id){if(this.kind==="db")return this.db.collection(col).doc(id).delete();
     if(this.kind==="sb"){const{error}=await SBC.cli.from("docs").delete().eq("col",col).eq("id",id);if(error)throw error;this.apply(col,id,null);sbRender();return}
     this.local(col,id,null)},
-  async baseDocs(date,kinds){kinds=kinds||["car","tra"];
+  async baseDocs(date,kinds){kinds=kinds||["car","tra"];date=bk(date);
     if(this.kind==="db"){const s=await this.db.collection("base").where("date","==",date).get();return s.docs.map(d=>({id:d.id,...d.data()})).filter(d=>kinds.includes(d.kind))}
     if(this.kind==="sb"){let out=[];for(const k of kinds){const{data,error}=await SBC.cli.from("docs").select("id,data").eq("col","base").like("id",date+"_"+k+"_%");if(error)throw error;out=out.concat((data||[]).map(r=>({id:r.id,...r.data})))}return out}
     return[]}
@@ -1187,15 +1197,15 @@ function afterLoad(){render()}
 /* ---------- IndexedDB (bases título a título fora do Claude) ---------- */
 const idb={p:null,open(){if(this.p)return this.p;this.p=new Promise((res,rej)=>{try{const r=indexedDB.open("mesa-carteiras",1);r.onupgradeneeded=()=>r.result.createObjectStore("bases");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}});return this.p},
   async tx(mode,fn){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction("bases",mode);const st=t.objectStore("bases");const r=fn(st);t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error)})},
-  get(k){return this.tx("readonly",st=>st.get(k)).catch(()=>null)},put(k,v){return this.tx("readwrite",st=>st.put(v,k)).then(()=>true).catch(()=>false)},del(k){return this.tx("readwrite",st=>st.delete(k)).catch(()=>null)}};
+  get(k){k=bk(k);return this.tx("readonly",st=>st.get(k)).catch(()=>null)},put(k,v){k=bk(k);return this.tx("readwrite",st=>st.put(v,k)).then(()=>true).catch(()=>false)},del(k){k=bk(k);return this.tx("readwrite",st=>st.delete(k)).catch(()=>null)}};
 
 /* ---------- base original com todas as colunas (comprimida) ---------- */
 const b64=u=>{let s="";for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)};
 const unb64=t=>{const s=atob(t);const u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u};
-async function rawChunks(date,raw){const X=await XLSXlib();const U=X.CFB.utils;const enc=new TextEncoder();const docs=[];let part=0;
+async function rawChunks(date,raw){date=bk(date);const X=await XLSXlib();const U=X.CFB.utils;const enc=new TextEncoder();const docs=[];let part=0;
   for(let i=0;i<raw.rows.length;i+=2500){const z=U._deflateRaw(enc.encode(JSON.stringify(raw.rows.slice(i,i+2500))));docs.push({id:`${date}_raw_${part}`,data:{date,kind:"raw",part,z:b64(z instanceof Uint8Array?z:new Uint8Array(z))}});part++}
   docs.push({id:`${date}_raw_d`,data:{date,kind:"raw",part:-1,hdr:raw.hdr,parts:part,n:raw.rows.length}});return docs}
-async function loadRaw(date){if(!date)return null;S.raws=S.raws||new Map();if(S.raws.has(date))return S.raws.get(date);let res=null;
+async function loadRaw(date){if(!date)return null;S.raws=S.raws||new NSMap();if(S.raws.has(date))return S.raws.get(date);let res=null;
   try{if(store.kind==="local"){const v=await idb.get(date);res=v&&v.raw||null}
     else{const docs=await store.baseDocs(date,["raw"]);const d=docs.find(x=>x.part===-1);if(d){const X=await XLSXlib();const U=X.CFB.utils;const dec=new TextDecoder();const parts=docs.filter(x=>x.part>=0).sort((a,b)=>a.part-b.part);
       if(parts.length===d.parts){const rows=[];for(const p of parts){const o=U._inflateRaw(unb64(p.z));rows.push(...JSON.parse(dec.decode(o instanceof Uint8Array?o:new Uint8Array(o))))};res={hdr:d.hdr,rows}}}}}catch(e){res=null}
@@ -1218,11 +1228,11 @@ async function loadBase(date){
   const res=out.car||out.tra?out:null;S.bases.set(date,res);return res;
 }
 function needBase(date,cb){
-  if(!date||S.bases.has(date))return S.bases.get(date)||null;
-  if(!S.loadingBase.has(date)){S.loadingBase.add(date);loadBase(date).catch(()=>S.bases.set(date,null)).finally(()=>{S.loadingBase.delete(date);render();if(cb)cb()})}
+  if(!date||S.bases.has(date))return S.bases.get(date)||null;const lk=bk(date);
+  if(!S.loadingBase.has(lk)){S.loadingBase.add(lk);loadBase(date).catch(()=>S.bases.set(date,null)).finally(()=>{S.loadingBase.delete(lk);render();if(cb)cb()})}
   return undefined;
 }
-function baseChunks(date,kind,b){
+function baseChunks(date,kind,b){date=bk(date);
   const docs=[];const dict={date,kind,part:-1,mot:b.mot,sac:b.sac,rot:b.rot,dst:b.dst,org:b.org,ced:b.ced,ass:b.ass||{},fil:b.fil||[],rgl:b.rgl||[],obs:b.obs||[],ext:b.ext||{},regional:b.regional||""};
   let part=0,cur=[],len=0;const flush=()=>{docs.push({id:`${date}_${kind}_${part}`,data:{date,kind,part,r:JSON.stringify(cur)}});part++;cur=[];len=0};
   b.rows.forEach(r=>{const s=JSON.stringify(r).length+1;if(len+s>200000)flush();cur.push(r);len+=s});if(cur.length||!part)flush();
@@ -1325,6 +1335,9 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 }
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
+ {v:"2026.11.03c",nome:"Beta 1.9",data:"03/11/2026",itens:[
+  "<b>Bases separadas:</b> a base de cada carteira agora é só de quem importou (não junta mais com a dos outros responsáveis nem com a de Todos os cedentes), e a base de Todos os cedentes é outra, só da equipe. As posições antigas continuam valendo até você importar a do dia.",
+  "<b>Importar base do dia:</b> a prévia agora mostra só os cedentes do seu arquivo (quantidade, índice médio, abaixo da meta e com tranche). O total da base da equipe, já juntando com os cedentes das outras pessoas, aparece logo abaixo."]},
  {v:"2026.11.03a",nome:"Beta 1.8",data:"03/11/2026",itens:[
   {beta:true,texto:"<b>Evolução da carteira (Carteiras):</b> no fim da aba Carteiras, o resumo do mês ou de um período específico (De/Até) por semana (confirmados, entradas, saídas do risco, C99, pendentes, índice e carteira), como as confirmações foram feitas, destaques por cedente, tabela por rótulo, gráficos de entradas/saídas, confirmados e índice, resumo por dia ou por semana e o texto do e-mail do resumo pronto para copiar."},
   "<b>Planilha de pendências:</b> as abas de motivo não trazem mais o Cod. Cedente (ele continua só na aba BASE)."]},
@@ -1400,7 +1413,7 @@ async function sbEntrar(user){
     if(!SBC.eu){S.mode="semacesso";render();return}
     if(user.user_metadata&&user.user_metadata.trocar_senha){S.mode="trocar";S.auth={};render();return}
     for(const col of["cfg","caract","anot","chamados","parecer","feito","obssac"]){const rows=await sbTodos(()=>SBC.cli.from("docs").select("id,data").eq("col",col));rows.forEach(r=>store.apply(col,r.id,r.data))}
-    const rg=await SBC.cli.from("docs").select("id,data").eq("col","reg").order("id",{ascending:false}).limit(70);if(rg.error)throw rg.error;(rg.data||[]).forEach(r=>store.apply("reg",r.id,r.data));
+    const rg=await SBC.cli.from("docs").select("id,data").eq("col","reg").order("id",{ascending:false}).limit(1000);if(rg.error)throw rg.error;(rg.data||[]).forEach(r=>store.apply("reg",r.id,r.data));
     const qp=await SBC.cli.from("docs").select("id,data").eq("col","qprof").order("updated_at",{ascending:false}).limit(60);(qp.data||[]).forEach(r=>store.apply("qprof",r.id,r.data));
     if(!SBC.canal)SBC.canal=SBC.cli.channel("docs-mesa").on("postgres_changes",{event:"*",schema:"public",table:"docs"},p=>{const row=p.eventType==="DELETE"?p.old:p.new;if(!row||!row.col||row.col==="base")return;store.apply(row.col,row.id,p.eventType==="DELETE"?null:row.data);sbRender()}).subscribe();
     S.mode="sb";if(!SBC.jaEntrou){SBC.jaEntrou=true;SBC.cli.rpc("registrar_acesso").then(()=>{},()=>{});setTimeout(novidadesAoEntrar,300)}render();
@@ -1524,7 +1537,7 @@ function histResumo(h){const d=h.data||{};if(h.col==="anot")return[d.acao&&"Aç�
 async function histRestaurar(hid){const h=(SBC.hist||[]).find(x=>String(x.hid)===String(hid));if(!h)return;await safe(store.set(h.col,h.id,h.data),"Versão restaurada");histCarregar()}
 function backupDocs(){const out=[];const pushMap=(col,m,wrap)=>Object.entries(m).forEach(([id,v])=>out.push({col,id,data:wrap?wrap(v):v}));
   out.push({col:"cfg",id:"geral",data:S.cfg},{col:"cfg",id:"risco",data:{map:S.risco}},{col:"cfg",id:"limites",data:{map:S.lim}},{col:"cfg",id:"grupos",data:{map:S.grupos}},{col:"cfg",id:"diario",data:{map:S.diario}},{col:"cfg",id:"responsaveis",data:{map:S.resp}});
-  pushMap("caract",S.car);pushMap("anot",S.anot);pushMap("reg",S.regs);pushMap("chamados",S.chamados);pushMap("parecer",S.parecer);pushMap("qprof",S.qprofs);pushMap("obssac",S.obsSac);pushMap("feito",S.feito,v=>({ids:v}));return out}
+  pushMap("caract",S.car);pushMap("anot",S.anot);pushMap("reg",S.regsAll);pushMap("chamados",S.chamados);pushMap("parecer",S.parecer);pushMap("qprof",S.qprofs);pushMap("obssac",S.obsSac);pushMap("feito",S.feito,v=>({ids:v}));return out}
 async function backupBaixar(){
   toast("Preparando backup…");const docs=backupDocs();
   for(const d of regDatas()){if(!S.regs[d].temBase)continue;try{if(store.remote()){(await store.baseDocs(d)).forEach(x=>{const{id,...data}=x;docs.push({col:"base",id,data})})}else{const b=await idb.get(d);if(b)["car","tra"].forEach(k=>{if(b[k])baseChunks(d,k,b[k]).forEach(x=>docs.push({col:"base",id:x.id,data:x.data}))})}}catch(e){}}
@@ -1684,7 +1697,7 @@ function fatLista(d,b){const B=b.car;const hoje=Core.isoSerial(d);const padrao=+
 function vFaturizados(){
   const d=ultimo();const tit=`<div class="ptitle">VAZIOS <span class="muted" style="font-weight:normal">· faturizados sem motivo e Merc. Ent. FALSE</span> <span class="ubeta">BETA TESTE</span><span class="muted"> · ${d?"base de "+fd(d):"sem base"}</span></div>`;
   if(!d)return tit+vazio();const b=needBase(d);if(b===undefined)return tit+'<p class="hint carregando">Carregando a base…</p>';if(!b||!b.car)return tit+`<div class="warn-box">A base de ${fd(d)} não tem os títulos salvos. Importe a base de novo.</div>`;
-  S.raws=S.raws||new Map();if(!S.raws.has(d)&&store.kind!=="db"){if(!S.rawCarregando){S.rawCarregando=true;loadRaw(d).finally(()=>{S.rawCarregando=false;render()})}return tit+'<p class="hint carregando">Carregando a base…</p>'}
+  S.raws=S.raws||new NSMap();if(!S.raws.has(d)&&store.kind!=="db"){if(!S.rawCarregando){S.rawCarregando=true;loadRaw(d).finally(()=>{S.rawCarregando=false;render()})}return tit+'<p class="hint carregando">Carregando a base…</p>'}
   const temMerc=!!(S.raws.get(d)&&S.raws.get(d).hdr&&S.raws.get(d).hdr.some(h=>Core.nrm(h)===Core.nrm("Merc. Ent.")));
   const L=fatLista(d,b);const tot=L.reduce((a,g)=>a+g.v,0),n=L.reduce((a,g)=>a+g.it.length,0);
   return tit+`<fieldset class="box"><legend>Como a lista é montada</legend><p class="small">São VAZIOS os títulos de rótulos <b>faturizados</b>, com <b>Motivo Entrega vazio</b> e <b>Merc. Ent. = FALSE</b>, de qualquer aditivo. A data do aditivo (os 6 primeiros dígitos, AAMMDD) só serve para avisar: quando passou do prazo da característica do cedente (ex.: “checagem D+5” = 5 dias), o título fica marcado em vermelho como <b>passou do prazo</b>, para não ser esquecido. Cedente sem prazo na característica usa o padrão de <input class="inp num" id="fat_dias" value="${esc(S.cfg.fatDias||5)}" style="width:52px;display:inline-block"> dias.</p></fieldset>
@@ -1897,7 +1910,7 @@ function ctlTexto(a){const i=a.info||{};const ced=c=>esc(nomeB(nomeCed(c)||c));
   if(a.col==="anot")return[a.acao==="delete"?`Apagou a anotação de ${ced(a.id)}`:`Atualizou a anotação de ${ced(a.id)}`,[i.acao&&"Ação: "+i.acao,i.pendencia&&"Pendência: "+i.pendencia,i.proximo&&"Próximo: "+i.proximo].filter(Boolean).map(esc).join(" · ")];
   if(a.col==="chamados")return[a.acao==="insert"?`Abriu o chamado ${esc(i.numero||"")}${i.cod?" · "+ced(i.cod):""}`:a.acao==="delete"?`Excluiu o chamado ${esc(i.numero||"")}`:`Atualizou o chamado ${esc(i.numero||"")}${i.cod?" · "+ced(i.cod):""}`,esc([i.motivo,i.fechamento?"fechado em "+fd(i.fechamento):"",i.n?i.n+" atualização(ões)":""].filter(Boolean).join(" · "))];
   if(a.col==="feito"){const d=+i.delta||0;return[d>=0?`Marcou ${d||""} ${d===1?"item":"itens"} como feito`:`Desmarcou ${-d} ${d===-1?"item":"itens"}`,a.id.startsWith("d")?"lista de todo dia":"semana de "+fds(a.id.slice(1))]}
-  if(a.col==="reg")return[a.acao==="delete"?`Excluiu a posição de ${fd(a.id)}`:`Registrou a posição de ${fd(a.id)}`,i.titulos?fN(i.titulos)+" títulos":""];
+  if(a.col==="reg")return[a.acao==="delete"?`Excluiu a posição de ${fd(String(a.id).split(NS_SEP).pop())}`:`Registrou a posição de ${fd(String(a.id).split(NS_SEP).pop())}`,i.titulos?fN(i.titulos)+" títulos":""];
   if(a.col==="base")return[`Importou a base ${i.kind==="tra"?"da tranche":"da carteira"} de ${fd(i.date||a.id.slice(0,10))}`,""];
   if(a.col==="parecer")return[`Editou o parecer da semana de ${fd(a.id)}`,""];
   if(a.col==="qprof")return[`Salvou uma pendência${i.cedente?" de "+esc(nomeB(i.cedente)):""}`,""];
@@ -1928,8 +1941,10 @@ function vControle(){
   const hora=q=>q?new Date(q).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):'<span class="muted">—</span>';
   const n=x=>x?`<b class="num">${x}</b>`:'<span class="muted">0</span>';
   // carteira de cada responsável (situação atual)
-  const L=linhasDe(ultimo()).filter(l=>l.naCarteira||l.tr);const semana=S.feito["w"+monday(today())]||{},hojeF=S.feito["d"+today()]||{};
-  const R2=new Map();L.forEach(l=>{const r=respDe(l.cod)||"(sem responsável)";const k=nrmN(r);const o=R2.get(k)||{nome:r,ced:0,ab:0,at:0,ok:0,emDia:0,atras:0,ch:0,feito:0,v:0,cv:0,falt:0,exc:0,c99:0};R2.set(k,o);o.ced++;
+  const L=(()=>{const by=new Map();for(const[id,v]of Object.entries(S.regsAll)){const i=id.indexOf(NS_SEP);if(i<0||!id.startsWith("p_"))continue;const d=id.slice(i+1),ns=id.slice(0,i);const o=by.get(ns);if(!o||d>o.d)by.set(ns,{d,v})}
+    const out=[],donos=new Set();by.forEach(({v})=>{const dn=v.dono||"";donos.add(nrmN(dn));(v.linhas||[]).filter(l=>l.naCarteira||l.tr).forEach(l=>out.push({...l,_resp:dn}))});
+    const ds=Object.keys(S.regsAll).filter(id=>!id.includes(NS_SEP)).sort(),u=ds[ds.length-1];if(u)(S.regsAll[u].linhas||[]).filter(l=>(l.naCarteira||l.tr)&&!donos.has(nrmN(respDe(l.cod)))).forEach(l=>out.push(l));return out})();const semana=S.feito["w"+monday(today())]||{},hojeF=S.feito["d"+today()]||{};
+  const R2=new Map();L.forEach(l=>{const r=l._resp||respDe(l.cod)||"(sem responsável)";const k=nrmN(r);const o=R2.get(k)||{nome:r,ced:0,ab:0,at:0,ok:0,emDia:0,atras:0,ch:0,feito:0,v:0,cv:0,falt:0,exc:0,c99:0};R2.set(k,o);o.ced++;
     if(l.naCarteira){o.v+=l.valor||0;o.cv+=l.vconf||0;o.falt+=l.faltam||0;o.c99+=(l.c99q&&l.c99q[1])||0;if(l.status==="Abaixo")o.ab++;else if(l.status==="Atenção")o.at++;else if(l.status==="OK")o.ok++}
     if(l.tr&&l.tr.status==="EXCESSO")o.exc++;
     const a=S.anot[l.cod];const idade=a&&a.atualizado?bdays(a.atualizado,today()):null;if(idade!=null&&idade<=5)o.emDia++;else o.atras++;
@@ -2067,7 +2082,7 @@ function relMov(){
   const bD=needBase(S.relDia),bP=S.relCmp?needBase(S.relCmp):null;
   if(bD===undefined||bP===undefined)return{loading:true};
   const k=S.relBase;if(!bD||!bD[k]||!S.relCmp||!bP||!bP[k])return{sem:true};
-  const key=[S.relDia,S.relCmp,k,S.cfg.motivosConf.length].join("|");if(relMov.k===key)return relMov.v;
+  const key=[nsAtual(),S.relDia,S.relCmp,k,S.cfg.motivosConf.length].join("|");if(relMov.k===key)return relMov.v;
   const mv=Core.movimento(bD[k],bP[k],S.cfg,k==="tra"?bD.car:null,true);relMov.k=key;relMov.v={mv,bD:bD[k],bP:bP[k]};return relMov.v;
 }
 function vMudou(){
@@ -2263,7 +2278,7 @@ function qTodos(){if(S.qLoteArq)return qLoteHtml(S.qLoteArq.out,S.qLoteArq.titul
   if(b0===undefined)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="hint carregando">Carregando a base de ${fd(d)}…</p></fieldset>`;
   const b=b0&&b0.car;if(!b)return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="muted">A base de ${fd(d)} não tem os títulos salvos. Importe a base do dia de novo.</p></fieldset>`;
   const key=[d,S.visao,S.visaoPessoa,(S.regs[d]||{}).criadoEm].join("|");
-  S.raws=S.raws||new Map();if(!S.raws.has(d)){if(!S.rawCarregando){S.rawCarregando=true;loadRaw(d).finally(()=>{S.rawCarregando=false;render()})}return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="hint carregando">Carregando a base de ${fd(d)}…</p></fieldset>`}
+  S.raws=S.raws||new NSMap();if(!S.raws.has(d)){if(!S.rawCarregando){S.rawCarregando=true;loadRaw(d).finally(()=>{S.rawCarregando=false;render()})}return`<fieldset class="box"><legend>Textos de todas as suas carteiras</legend><p class="hint carregando">Carregando a base de ${fd(d)}…</p></fieldset>`}
   const rw=S.raws.get(d);const kk=key+(rw?"|raw":"");
   if(!S.qTodosC||S.qTodosC.key!==kk){const cods=[...new Set(b.rows.map(r=>String(r[1])))].filter(c=>vis(c));
     let grupos;if(rw){const iC=rw.hdr.findIndex(h=>Core.nrm(h)===Core.nrm("Cod. Cedente"));const por=new Map();for(const r of rw.rows){const c=String(Core.toInt(r[iC]));if(!por.has(c))por.set(c,[]);por.get(c).push(r)}
@@ -2438,7 +2453,7 @@ function openTit(cod,kind,f){
   mostrarTit(titulo,it,fd(d),null,d);
 }
 function mostrarTit(titulo,it,quando,extraCol,dataISO){
-  if(dataISO&&store.kind!=="db"){S.raws=S.raws||new Map();if(!S.raws.has(dataISO)){drawer(titulo,'<p class="hint carregando">Carregando os títulos…</p>',"",true);loadRaw(dataISO).then(()=>mostrarTit(titulo,it,quando,extraCol,dataISO));return}
+  if(dataISO&&store.kind!=="db"){S.raws=S.raws||new NSMap();if(!S.raws.has(dataISO)){drawer(titulo,'<p class="hint carregando">Carregando os títulos…</p>',"",true);loadRaw(dataISO).then(()=>mostrarTit(titulo,it,quando,extraCol,dataISO));return}
     const rw=S.raws.get(dataISO);if(rw&&rw.hdr)return mostrarTitRaw(titulo,it,quando,extraCol,rw)}
   it.sort((a,b)=>b.r[2]-a.r[2]);const tot=it.reduce((a,x)=>a+x.r[2],0);const d=v=>v?fd(serD(v)):"—";const tx=v=>v==null||v===""?"—":esc(v);
   const velha=it.some(x=>x.r.length<18);
@@ -2567,18 +2582,21 @@ async function drawImport(){
   $("#i_list").innerHTML=D.files.length?`<table class="grid"><thead><tr><th>Arquivo</th><th>Títulos</th><th>É a base da</th><th></th></tr></thead><tbody>${D.files.map((f,i)=>`<tr><td class="small wrap">${esc(f.nome)}</td><td class="r num">${f.b.rows.length}</td><td><select class="inp" data-ftipo="${i}"><option value="car"${f.tipo==="car"?" selected":""}>Carteira</option><option value="tra"${f.tipo==="tra"?" selected":""}>Tranche</option></select></td><td><button class="lk" data-act="rmFile" data-i="${i}">remover</button></td></tr>`).join("")}</tbody></table>`:"";
   const car=D.files.find(f=>f.tipo==="car"),tra=D.files.find(f=>f.tipo==="tra");
   if(!car&&!tra){if(D.chImp&&D.chImp.length){D.parsed=null;$("#i_prev").innerHTML=`<fieldset class="box in"><legend>Prévia</legend>${chResumoImp()}</fieldset>`;$("#i_go").disabled=false}else{$("#i_prev").innerHTML="";$("#i_go").disabled=true}return}
-  const data=$("#i_data").value;const ex=S.regs[data];const pv=anterior(data);
+  const data=$("#i_data").value;const K=regK(data);const ex=S.regsAll[K];const pv=anterior(data);const pvMeu=pv&&S.regsAll[regK(pv)];
   $("#i_prev").innerHTML='<p class="hint">Calculando…</p>';
   let bp=null;if(pv){bp=await loadBase(pv).catch(()=>null)}
-  const old=ex?await loadBase(data).catch(()=>null):null;
-  const junta=D.substituir!==true,baseJ=old||bp;let infoJ=null;
+  const old=ex?await loadBase(K).catch(()=>null):null;
+  const junta=D.substituir!==true,baseJ=old;let infoJ=null;
   const jn=(neu,velha)=>{if(!neu||!junta||!velha)return neu;const r=juntarBase(velha,neu);infoJ=infoJ||{mant:0,nov:0,de:old?data:pv,pess:new Set()};infoJ.mant+=r.mant;infoJ.nov+=r.nov;r.pess.forEach(x=>infoJ.pess.add(x));return r.b};
-  const carB=car?jn(car.b,baseJ&&baseJ.car):(old&&old.car)||null,traB=tra?jn(tra.b,baseJ&&baseJ.tra):(old&&old.tra)||(!ex&&bp&&bp.tra&&D.keepTr!==false?bp.tra:null);
+  const carB=car?jn(car.b,baseJ&&baseJ.car):(old&&old.car)||null,traB=tra?jn(tra.b,baseJ&&baseJ.tra):(old&&old.tra)||(!ex&&pvMeu&&bp&&bp.tra&&D.keepTr!==false?bp.tra:null);
   let linhas;try{linhas=Core.calcular(carB,traB,refObj(),{date:data,prevCar:bp&&bp.car,prevTra:bp&&bp.tra})}catch(e){$("#i_err").textContent=e.message;$("#i_go").disabled=true;return}
   D.parsed={linhas,carB,traB,car,tra,pv,data};
-  const cd=linhas.filter(l=>l.naCarteira&&l.ind!=null);const media=cd.length?cd.reduce((a,l)=>a+l.ind,0)/cd.length:null;
+  const doArq=new Set();[car,tra].forEach(f=>{if(f)f.b.rows.forEach(r=>doArq.add(String(r[1])))});
+  const juntou=!!(infoJ&&infoJ.mant);const LA=juntou?linhas.filter(l=>doArq.has(String(l.cod))):linhas;
+  const cd=LA.filter(l=>l.naCarteira&&l.ind!=null);const media=cd.length?cd.reduce((a,l)=>a+l.ind,0)/cd.length:null;
   const movOk=linhas.some(l=>l.mov);
-  $("#i_prev").innerHTML=`<fieldset class="box in"><legend>Prévia</legend><div class="kps sm"><div class="kp"><small>Cedentes na carteira</small><b>${linhas.filter(l=>l.naCarteira).length}</b></div><div class="kp"><small>Índice médio</small><b>${pc(media)}</b></div><div class="kp"><small>Abaixo da meta</small><b>${cd.filter(l=>l.status==="Abaixo").length}</b></div><div class="kp"><small>Com tranche</small><b>${linhas.filter(l=>l.tr).length}</b></div></div>
+  $("#i_prev").innerHTML=`<fieldset class="box in"><legend>Prévia${juntou?" · só os cedentes deste arquivo":""}</legend><div class="kps sm"><div class="kp"><small>Cedentes ${juntou?"deste arquivo":"na carteira"}</small><b>${LA.filter(l=>l.naCarteira).length}</b></div><div class="kp"><small>Índice médio</small><b>${pc(media)}</b></div><div class="kp"><small>Abaixo da meta</small><b>${cd.filter(l=>l.status==="Abaixo").length}</b></div><div class="kp"><small>Com tranche</small><b>${LA.filter(l=>l.tr).length}</b></div></div>
+   ${juntou?`<p class="small muted">Juntando com os cedentes das outras pessoas, a base do dia da equipe fica com ${linhas.filter(l=>l.naCarteira).length} cedentes.</p>`:""}
    <p class="small">${pv?(movOk?`Vai comparar título a título com a base de ${fd(pv)}.`:`A base de ${fd(pv)} não tem os títulos salvos; a comparação título a título começa a partir desta.`):"Primeira base: a comparação título a título começa na próxima importação."}</p>
    ${baseJ&&(car||tra)?`<div class="${junta?"info-box":"warn-box"}">${junta?(infoJ&&infoJ.mant?`<b>Juntando com a base de ${fd(infoJ.de)}.</b> Os cedentes deste arquivo${infoJ.pess.size?` (de ${[...infoJ.pess].map(esc).join(", ")})`:""} entram no lugar dos anteriores; ${infoJ.mant} cedente${infoJ.mant>1?"s":""} de outras pessoas continua${infoJ.mant>1?"m":""} como estava${infoJ.mant>1?"m":""}.`:`Este arquivo tem todos os cedentes da base de ${fd(infoJ?infoJ.de:(old?data:pv))}; ela será atualizada.`):`<b>Substituir tudo:</b> a posição de ${fd(data)} fica só com os cedentes deste arquivo; os de outras pessoas saem desta data.`}
      <label class="ck small" style="display:block;margin-top:4px"><input type="checkbox" id="i_subst"${junta?"":" checked"}> Este arquivo é a base completa da equipe (substituir tudo em vez de juntar)</label></div>`:""}
@@ -2595,24 +2613,24 @@ async function doImport(){
   const go=$("#i_go");go.disabled=true;go.textContent="Registrando…";
   try{
     if(D.wbRef&&$("#i_ref")&&$("#i_ref").checked){go.textContent="Atualizando referências…";await importarReferencias(D.refGet);await drawImport()}
-    const Pp=D.parsed;let temBase=store.remote();
+    const Pp=D.parsed;let temBase=store.remote();const K=regK(data);
     let rawNova=null;if(Pp.car&&Pp.car.raw&&Pp.car.raw.hdr){go.textContent="Guardando a base original…";const cNovos=new Set(Pp.car.b.rows.map(r=>String(r[1])));const manter=new Set(Pp.carB.rows.map(r=>String(r[1])).filter(c=>!cNovos.has(c)));
-      let velha=null;if(manter.size)velha=await loadRaw(S.regs[data]?data:(Pp.pv||anterior(data)));rawNova=juntarRaw(velha,{hdr:Pp.car.raw.hdr,rows:Pp.car.raw.rows},manter);S.raws=S.raws||new Map();S.raws.set(data,rawNova)}
-    if(!temBase)temBase=await idb.put(data,{car:Pp.carB,tra:Pp.traB,raw:rawNova});
+      let velha=null;if(manter.size)velha=await loadRaw(S.regsAll[K]?K:null);rawNova=juntarRaw(velha,{hdr:Pp.car.raw.hdr,rows:Pp.car.raw.rows},manter);S.raws=S.raws||new NSMap();S.raws.set(K,rawNova)}
+    if(!temBase)temBase=await idb.put(K,{car:Pp.carB,tra:Pp.traB,raw:rawNova});
     if(temBase){
-      const docs=[];if(Pp.car)docs.push(...baseChunks(data,"car",Pp.carB));if(rawNova&&store.remote())docs.push(...await rawChunks(data,rawNova));if(Pp.tra||(!Pp.tra&&Pp.traB&&!S.regs[data]))docs.push(...baseChunks(data,"tra",Pp.traB));
-      const old=await store.baseDocs(data,["car","tra","raw"]);const keep=new Set(docs.map(d=>d.id));
+      const docs=[];if(Pp.car)docs.push(...baseChunks(K,"car",Pp.carB));if(rawNova&&store.remote())docs.push(...await rawChunks(K,rawNova));if(Pp.tra||(!Pp.tra&&Pp.traB&&!S.regsAll[K]))docs.push(...baseChunks(K,"tra",Pp.traB));
+      const old=await store.baseDocs(K,["car","tra","raw"]);const keep=new Set(docs.map(d=>d.id));
       for(let i=0;i<docs.length;i++){go.textContent=`Salvando ${i+1} de ${docs.length}…`;await store.set("base",docs[i].id,docs[i].data);await pausa()}
       for(const o of old)if(!keep.has(o.id)&&((Pp.car&&o.kind==="car")||(Pp.tra&&o.kind==="tra")||(rawNova&&o.kind==="raw")))await store.del("base",o.id);
       if(rawNova&&store.remote()){try{const ds=[...new Set([...regDatas(),data])].sort();for(const dv of ds.slice(0,-5)){const rd=await store.baseDocs(dv,["raw"]);for(const o of rd)await store.del("base",o.id);if(S.raws)S.raws.delete(dv)}}catch(e){}}
     }
-    const prevReg=S.regs[data]||{};
-    const doc={data,linhas:JSON.parse(JSON.stringify(Pp.linhas)),criadoEm:Date.now(),temBase:temBase||!!prevReg.temBase,arquivos:{cart:Pp.car?Pp.car.nome:(prevReg.arquivos&&prevReg.arquivos.cart)||"",tr:Pp.tra?Pp.tra.nome:(prevReg.arquivos&&prevReg.arquivos.tr)||""},titCart:Pp.carB?Pp.carB.rows.length:0,titTr:Pp.traB?Pp.traB.rows.length:0};
-    S.bases.set(data,{car:Pp.carB,tra:Pp.traB});S.regs[data]=doc;
-    const ok=await safe(store.set("reg",data,doc),"Posição de "+fd(data)+" registrada");
+    const prevReg=S.regsAll[K]||{};
+    const doc={data,dono:S.visao==="equipe"?"Equipe":(S.visao==="pessoa"?S.visaoPessoa:meuNome()),linhas:JSON.parse(JSON.stringify(Pp.linhas)),criadoEm:Date.now(),temBase:temBase||!!prevReg.temBase,arquivos:{cart:Pp.car?Pp.car.nome:(prevReg.arquivos&&prevReg.arquivos.cart)||"",tr:Pp.tra?Pp.tra.nome:(prevReg.arquivos&&prevReg.arquivos.tr)||""},titCart:Pp.carB?Pp.carB.rows.length:0,titTr:Pp.traB?Pp.traB.rows.length:0};
+    S.bases.set(K,{car:Pp.carB,tra:Pp.traB});regPut(K,doc);
+    const ok=await safe(store.set("reg",K,doc),"Posição de "+fd(data)+" registrada");
     if(ok){
       S.raw={cart:Pp.car&&Pp.car.raw,tr:Pp.tra&&Pp.tra.raw};
-      const prox=regDatas().find(x=>x>data);if(prox&&temBase){const bn=await loadBase(prox).catch(()=>null);if(bn){const ln=Core.calcular(bn.car,bn.tra,refObj(),{date:prox,prevCar:Pp.carB,prevTra:Pp.traB});await safe(store.set("reg",prox,{...S.regs[prox],linhas:JSON.parse(JSON.stringify(ln))}))}}
+      const prox=regDatas().find(x=>x>data);const KP=prox&&regK(prox);if(prox&&temBase&&S.regsAll[KP]){const bn=await loadBase(prox).catch(()=>null);if(bn){const ln=Core.calcular(bn.car,bn.tra,refObj(),{date:prox,prevCar:Pp.carB,prevTra:Pp.traB});const nd={...S.regsAll[KP],linhas:JSON.parse(JSON.stringify(ln))};regPut(KP,nd);await safe(store.set("reg",KP,nd))}}
       if(D.chImp&&D.chImp.length){try{go.textContent="Salvando chamados…";const n=await chImportar(D.chImp,t=>go.textContent=t);toast(n+" chamados da aba CHAMADOS atualizados")}catch(e){toast("Base registrada, mas os chamados não foram salvos: "+(e.message||e))}}
       S.dia=data;S.cmp=null;S.relDia=data;S.relCmp=null;closeDrawer();if(S.visao==="equipe"){S.view="geral";S.gSub="pesq";location.hash="pesquisar"}else{S.view="relatorios";S.relTab="mudou";location.hash="relatorios"}render();
     }else{go.disabled=false;go.textContent="Registrar posição"}
@@ -2769,7 +2787,7 @@ document.addEventListener("click",async e=>{
     case"close":closeDrawer();break;
     case"arm":{const key=el.dataset.key;if(S.armed!==key){S.armed=key;el.dataset.label=el.textContent;el.classList.add("armed");el.textContent="Confirmar exclusão";break}
       S.armed=null;const i=key.indexOf(":"),k=key.slice(0,i),v=key.slice(i+1);
-      if(k==="reg"){if(S.raws)S.raws.delete(v);if(store.remote()){const docs=await store.baseDocs(v,["car","tra","raw"]);for(const d of docs)await store.del("base",d.id)}else await idb.del(v);S.bases.delete(v);await safe(store.del("reg",v),"Posição excluída");if(S.dia===v)S.dia=null;if(S.relDia===v)S.relDia=null;render()}
+      if(k==="reg"){const rid=bk(v);if(S.raws)S.raws.delete(v);if(store.remote()){const docs=await store.baseDocs(v,["car","tra","raw"]);for(const d of docs)await store.del("base",d.id)}else await idb.del(v);S.bases.delete(v);await safe(store.del("reg",rid),"Posição excluída");regPut(rid,null);if(S.dia===v)S.dia=null;if(S.relDia===v)S.relDia=null;render()}
       else if(k==="ch"){closeDrawer();await safe(store.del("chamados",v),"Chamado excluído")}
       else if(k==="qprof")await safe(store.del("qprof",v),"Excluído");
       else if(k==="mb")await membroDel(v);
@@ -2892,7 +2910,7 @@ const ixOf=o=>o&&o.v>0?o.cv/o.v:null,pixOf=o=>o&&o.pv>0?o.pcv/o.pv:null;
 
 /* carrega as bases do mês (e a última antes dele) */
 function evolBases(P){
-  S.evB=S.evB||{};const ds=regDatas();const pk=P.a+"|"+P.b;const key=pk+"|"+ds.join(",");const E=S.evB[pk];if(E&&E.key===key)return E;
+  S.evB=S.evB||{};const ds=regDatas();const pk=nsAtual()+"|"+P.a+"|"+P.b;const key=pk+"|"+ds.join(",");const E=S.evB[pk];if(E&&E.key===key)return E;
   if(E&&E.loading)return E;
   const noMes=ds.filter(d=>d>=P.a&&d<=P.b),antes=ds.filter(d=>d<P.a).reverse().slice(0,6);
   const st={key,loading:true,B:[],feitos:0,total:noMes.length};S.evB[pk]=st;
@@ -2903,7 +2921,7 @@ function evolBases(P){
 }
 function evolCalc(P,E,rots){
   rots=rots||S.evRots||[];const cfg=S.cfg;S.evCM=S.evCM||new Map();
-  const key=[P.a,P.b,E.key,S.visao,S.visaoPessoa,rots.join("¦"),cfg.motivosConf.length,cfg.motivosC99.length,cfg.motivosNA.length,cfg.motivosNC.length,cfg.soMonitorados].join("|");if(S.evCM.has(key))return S.evCM.get(key);if(S.evCM.size>6)S.evCM.clear();
+  const key=[nsAtual(),P.a,P.b,E.key,S.visao,S.visaoPessoa,rots.join("¦"),cfg.motivosConf.length,cfg.motivosC99.length,cfg.motivosNA.length,cfg.motivosNC.length,cfg.soMonitorados].join("|");if(S.evCM.has(key))return S.evCM.get(key);if(S.evCM.size>6)S.evCM.clear();
   const ok=(b,r)=>{if(cfg.soMonitorados&&r[16]!==1)return false;if(!vis(String(r[1])))return false;return!rots.length||rots.includes(Evol.rotDe(b,r))};
   const DIA={};E.B.forEach((d,i)=>{const bD=S.bases.get(d),bP=i?S.bases.get(E.B[i-1]):null;DIA[d]=Evol.dia(bD.car,bP&&bP.car,cfg,ok)});
   const prevOf=d=>{const i=E.B.indexOf(d);return i>0?E.B[i-1]:null};
