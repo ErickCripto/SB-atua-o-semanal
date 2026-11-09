@@ -868,6 +868,14 @@ const Core=(function(){
       return L;
     });
   }
+  /* recalcula o que depende do risco (meta, situação, faltam, tranche) numa linha já registrada */
+  function reaplicarRisco(L,ref){const cfg=ref.cfg;const risco=riscoDe(L.cod,ref),mi=metaDe(L.cod,risco,ref);const o={...L,risco,meta:mi.meta,origemMeta:mi.origem};
+    const an=(ref.anot||{})[L.cod]||{};if(!an.dia)o.dia=diaSugerido(L.cod,risco);
+    if(L.naCarteira&&L.valor!=null){const st=statusConf(L.ind,mi.meta,cfg.margem);if(L.naoAtuar){o.statusPlanilha=st;o.status="Não atuar";o.faltam=0}else{o.status=st;o.faltam=L.ind==null?null:Math.max(0,r2(mi.meta*L.valor-L.vconf))}}
+    if(L.tr){const pr=cfg.metasTranchePropria&&cfg.metasTranchePropria[L.cod];const mu=pr&&pr.meta?+pr.meta:risco==="Alto"?cfg.trAlto:risco==="Médio"?cfg.trMedio:risco==="Baixo"?cfg.trBaixo:cfg.trSem;
+      const tr={...L.tr,metaUso:mu},J=L.tr.limite,I=L.tr.valor;if(J!=null&&typeof J==="number"){tr.teto=r2(J*mu);tr.reduzir=Math.max(0,r2(I-tr.teto));tr.status=r2(I)>r2(J)?"EXCESSO":r2(I)>r2(tr.teto)?"Acima da meta":"OK"}
+      tr.statusConf=statusConf(tr.ind,mi.meta,cfg.margem);o.tr=tr}
+    return o}
   /* valores da linha restritos a alguns rótulos */
   function porRotulo(L,rots,cfg){
     if(!rots||!rots.length||!L.naCarteira)return L;let q=0,v=0,cv=0,c9=0,na=0,nc=0;
@@ -876,7 +884,7 @@ const Core=(function(){
     const o={...L,tit:q,valor:v,vconf:cv,ind,c99:v?c9/v:null,na:v?na/v:null,nc:v?nc/v:null,filtrado:true};
     o.status=L.naoAtuar?"Não atuar":statusConf(ind,L.meta,cfg.margem);o.faltam=L.naoAtuar||ind==null?0:Math.max(0,r2(L.meta*v-cv));return o;
   }
-  return{U,nrm,toNum,toInt,toSerial,isoSerial,serialISO,pzDays,canonRot,findHeader,parseBase,motInfo,movimento,calcular,porRotulo,prazoCk,pistas,checagem,naoAtuar,confCat,riscoDe,metaDe,statusConf,diaSugerido,nivel};
+  return{reaplicarRisco,U,nrm,toNum,toInt,toSerial,isoSerial,serialISO,pzDays,canonRot,findHeader,parseBase,motInfo,movimento,calcular,porRotulo,prazoCk,pistas,checagem,naoAtuar,confCat,riscoDe,metaDe,statusConf,diaSugerido,nivel};
 })();
 if(typeof module!=="undefined")module.exports=Core;
 
@@ -1335,6 +1343,8 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 }
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
+ {v:"2026.11.09a",nome:"Beta 2.0",data:"09/11/2026",itens:[
+  {beta:true,texto:"<b>Pricing (Ajustes):</b> mande a planilha de pricing e o site mostra quem mudou de risco; ao confirmar, troca o risco e recalcula meta, situação, quanto falta e a meta da tranche nas bases de todas as carteiras e de Todos os cedentes (deste mês, só a mais recente ou todas)."}]},
  {v:"2026.11.03c",nome:"Beta 1.9",data:"03/11/2026",itens:[
   "<b>Bases separadas:</b> a base de cada carteira agora é só de quem importou (não junta mais com a dos outros responsáveis nem com a de Todos os cedentes), e a base de Todos os cedentes é outra, só da equipe. As posições antigas continuam valendo até você importar a do dia.",
   "<b>Importar base do dia:</b> a prévia agora mostra só os cedentes do seu arquivo (quantidade, índice médio, abaixo da meta e com tranche). O total da base da equipe, já juntando com os cedentes das outras pessoas, aparece logo abaixo."]},
@@ -2327,6 +2337,9 @@ function vAjustes(){
     ${meuNomeBox}${vEquipeHist()}${vConexao()}
     <fieldset class="box"><legend>Backup</legend><p class="hint">Um arquivo com tudo: anotações, chamados, posições, parâmetros e as bases título a título. Serve para guardar uma cópia ou levar os dados para outro lugar (por exemplo, da versão do Claude para o banco da equipe).</p>
      <div class="fbar"><button class="btn" data-act="backupBaixar">Baixar backup (.json)</button><label class="btn">Restaurar backup<input type="file" id="bkFile" accept=".json,application/json" hidden></label></div></fieldset>
+    ${ehAdmin()&&ehBeta()?`<fieldset class="box"><legend>Pricing (risco dos cedentes) <span class="ubeta">BETA</span></legend><p class="hint">Mande a planilha de pricing (.xlsx ou .csv) com o código do cedente e o risco (Alto, Médio, Baixo). O site mostra quem mudou de risco e, ao confirmar, troca o risco e recalcula meta, situação, quanto falta e a meta da tranche nas bases de todas as carteiras e de Todos os cedentes.</p>
+     <div class="fbar"><label class="btn pri">Enviar planilha de pricing<input type="file" id="pricingFile" accept=".xlsx,.xlsm,.xls,.csv" hidden></label></div>
+     <p class="foot">Hoje: ${fN(Object.keys(S.risco).length)} cedentes com risco · ${["Alto","Médio","Baixo"].map(r=>r+": "+fN(Object.values(S.risco).filter(x=>x===r).length)).join(" · ")}</p></fieldset>`:""}
     <fieldset class="box"><legend>Tabelas de referência</legend><table class="grid"><tbody>
      <tr><td>Risco Pricing</td><td class="r num">${Object.keys(S.risco).length} códigos</td></tr><tr><td>Grupos econômicos</td><td class="r num">${Object.keys(S.grupos).length} códigos</td></tr>
      <tr><td>Limite da tranche</td><td class="r num">${Object.keys(S.lim).length} cedentes</td></tr><tr><td>Característica</td><td class="r num">${Object.keys(S.car).length} cedentes</td></tr><tr><td>Anotações</td><td class="r num">${Object.keys(S.anot).length} cedentes</td></tr></tbody></table>
@@ -2651,6 +2664,54 @@ async function importarReferencias(get){const n=[];
   toast(n.length?"Atualizado: "+n.join(", "):"Nenhuma aba de referência encontrada no arquivo");
 }
 
+/* ---------- pricing: troca o risco e recalcula as bases de todas as carteiras ---------- */
+function riscoNorm(x){const n=nrmN(x);if(!n)return null;if(/^(alto|a|high)$/.test(n)||n.includes("alto"))return"Alto";if(/^(medio|m|med)$/.test(n)||n.includes("medio"))return"Médio";if(/^(baixo|b|low)$/.test(n)||n.includes("baixo"))return"Baixo";if(n.includes("sem"))return"Sem risco";return null}
+function pricingLer(sheets){
+  const nomes=Object.keys(sheets);const ord=[...nomes.filter(n=>/pric|princ|risco/i.test(n)),...nomes.filter(n=>!/pric|princ|risco/i.test(n))];
+  for(const nm of ord){const A=sheets[nm]||[];
+    for(let h=0;h<Math.min(15,A.length);h++){const H=(A[h]||[]).map(x=>nrmN(x));
+      const iCod=H.findIndex(x=>/^(cod\.? ?cedente|codigo ?cedente|cod ced|cod\.? ?do cedente|codigo|cod\.?|cedente cod)$/.test(x));
+      const iR=H.findIndex(x=>/^(risco|risco pricing|risco princing|pricing|princing|classificacao|class\.? risco|nivel de risco)$/.test(x));
+      if(iCod<0||iR<0)continue;
+      const iG=H.findIndex(x=>/^(cod\.? ?grupo|codigo ?grupo|grupo cod|cod grupo economico)$/.test(x)),iGn=H.findIndex(x=>/^(grupo|grupo economico|nome ?grupo|nome do grupo)$/.test(x));
+      const iN=H.findIndex((x,i)=>i!==iCod&&/^(cedente|nome|razao social|nome cedente|nome do cedente)$/.test(x));
+      const map={},nomesC={},grupos={};let lidos=0,inval=0;
+      A.slice(h+1).forEach(r=>{if(!r)return;let c=r[iCod];if(c==null||c==="")return;c=String(c).trim().replace(/\.0+$/,"");const mm=c.match(/^(\d+)/);if(mm)c=mm[1];const rv=riscoNorm(r[iR]);if(!rv){inval++;return}lidos++;if(!map[c])map[c]=rv;if(iN>=0&&r[iN])nomesC[c]=String(r[iN]).trim();if(iG>=0&&r[iG])grupos[c]=[String(r[iG]),String(iGn>=0&&r[iGn]||"")]});
+      if(lidos)return{aba:nm,map,nomes:nomesC,grupos:Object.keys(grupos).length?grupos:null,lidos,inval};
+    }
+    if(/princ|pric/i.test(nm)){const m={},g={};let lidos=0;A.slice(1).forEach(r=>{if(!r||r[1]==null)return;const rv=riscoNorm(r[4]);if(!rv)return;const k=String(r[1]);lidos++;if(!m[k])m[k]=rv;if(r[0]&&!g[k])g[k]=[String(r[0]),String(r[2]||"")]});if(lidos)return{aba:nm,map:m,nomes:{},grupos:Object.keys(g).length?g:null,lidos,inval:0}}
+  }
+  return null}
+function pricingAbrir(pl,arq){
+  const P=pricingLer(pl.sheets);if(!P){toast("Não achei no arquivo uma coluna de código do cedente e uma de risco (Alto, Médio, Baixo).");return}
+  const nomeDeCod=c=>P.nomes[c]||(()=>{for(const id of Object.keys(S.regsAll).sort().reverse()){const l=(S.regsAll[id].linhas||[]).find(x=>x.cod===c);if(l)return l.nome}return""})();
+  const mud=[];const todos=new Set([...Object.keys(P.map),...Object.keys(S.risco)]);todos.forEach(c=>{const a=S.risco[c]||"Sem risco",b=P.map[c]||"Sem risco";if(a!==b)mud.push({c,a,b})});
+  const mes=today().slice(0,7);const ids=Object.keys(S.regsAll);const nMes=ids.filter(id=>id.split(NS_SEP).pop()>=mes+"-01").length;
+  D={kind:"pricing",P,arq};
+  drawer("Atualizar pricing",`<p>Arquivo <b>${esc(arq)}</b>, aba <b>${esc(P.aba)}</b>: ${fN(Object.keys(P.map).length)} cedentes com risco (${["Alto","Médio","Baixo"].map(r=>r+": "+fN(Object.values(P.map).filter(x=>x===r).length)).join(" · ")})${P.inval?`; ${fN(P.inval)} linhas sem risco reconhecido ficaram de fora`:""}.</p>
+   <fieldset class="box in"><legend>Mudam de risco (${fN(mud.length)})</legend>${mud.length?`<div class="tw" style="max-height:300px"><table class="grid"><thead><tr><th>Cód.</th><th>Cedente</th><th>Antes</th><th>Agora</th></tr></thead><tbody>${mud.sort((x,y)=>(+x.c)-(+y.c)).map(m=>`<tr><td class="num">${esc(m.c)}</td><td>${esc(nomeB(nomeDeCod(m.c)))}</td><td>${esc(m.a)}</td><td><b>${esc(m.b)}</b></td></tr>`).join("")}</tbody></table></div>`:'<p class="hint">Nenhum cedente muda de risco. Mesmo assim dá para aplicar para recalcular as bases.</p>'}
+    <p class="hint">Cedente que não está no arquivo fica como “Sem risco” (meta padrão).</p></fieldset>
+   <fieldset class="box in"><legend>Recalcular em quais posições</legend>
+    <label class="fl"><input type="radio" name="pr_esc" value="mes" checked> Posições deste mês (${fN(nMes)}), de todas as carteiras e de Todos os cedentes</label>
+    <label class="fl"><input type="radio" name="pr_esc" value="ult"> Só a posição mais recente de cada carteira</label>
+    <label class="fl"><input type="radio" name="pr_esc" value="tudo"> Todas as posições registradas (${fN(ids.length)})</label>
+    ${P.grupos?`<label class="fl"><input type="checkbox" id="pr_grp" checked> Atualizar também os grupos econômicos (${fN(Object.keys(P.grupos).length)} cedentes)</label>`:""}</fieldset>
+   <div class="err" id="pr_err"></div>`,`<button class="btn" data-act="close">Cancelar</button><button class="btn pri" data-act="pricingAplicar" id="pr_go">Aplicar em todas as carteiras</button>`)}
+async function pricingAplicar(){
+  const P=D&&D.kind==="pricing"&&D.P;if(!P)return;const go=$("#pr_go");go.disabled=true;
+  const esc_=(document.querySelector('input[name=pr_esc]:checked')||{}).value||"mes";
+  try{go.textContent="Salvando o pricing…";await store.set("cfg","risco",{map:P.map});S.risco=P.map;
+    if(P.grupos&&$("#pr_grp")&&$("#pr_grp").checked){await store.set("cfg","grupos",{map:{...S.grupos,...P.grupos}});S.grupos={...S.grupos,...P.grupos}}
+    let ids=Object.keys(S.regsAll);const mes=today().slice(0,7);
+    if(esc_==="mes")ids=ids.filter(id=>id.split(NS_SEP).pop()>=mes+"-01");
+    else if(esc_==="ult"){const by=new Map();ids.forEach(id=>{const i=id.indexOf(NS_SEP),ns=i<0?"":id.slice(0,i),d=id.split(NS_SEP).pop();const o=by.get(ns);if(!o||d>o.d)by.set(ns,{d,id})});ids=[...by.values()].map(o=>o.id)}
+    const ref=refObj();let n=0,nl=0,carts=new Set();
+    for(let i=0;i<ids.length;i++){const id=ids[i],doc=S.regsAll[id];if(!doc||!doc.linhas)continue;go.textContent=`Recalculando ${i+1} de ${ids.length}…`;
+      const novas=doc.linhas.map(l=>Core.reaplicarRisco(l,ref));const mudou=novas.filter((l,k)=>JSON.stringify(l)!==JSON.stringify(doc.linhas[k])).length;
+      if(!mudou)continue;const nd={...doc,linhas:novas,pricingEm:Date.now()};await store.set("reg",id,nd);regPut(id,nd);n++;nl+=mudou;carts.add(id.includes(NS_SEP)?id.split(NS_SEP)[0]:"antigas");await pausa()}
+    if(S.evCM)S.evCM.clear();closeDrawer();toast(`Pricing atualizado: ${fN(nl)} linhas recalculadas em ${fN(n)} posições (${fN(carts.size)} bases)`);render();
+  }catch(e){$("#pr_err").textContent=e.message||String(e);go.disabled=false;go.textContent="Aplicar em todas as carteiras"}}
+
 /* ---------- exportar ---------- */
 async function expReg(){
   const X=await XLSXlib();const head=["Data","Cód. Cedente","Cedente","Risco Princing","Títulos (qtd)","Valor total (R$)","Valor confirmado (R$)","Índice de confirmação","% problema C99","% Não atende","% Nada consta","Meta de confirmação","Status confirmação","Títulos na tranche (qtd)","Valor na tranche (R$)","Limite tranche (R$)","% do limite da tranche usado","Status tranche"];
@@ -2785,6 +2846,7 @@ document.addEventListener("click",async e=>{
     case"qSalvar":{const A=S.Q.A;await safe(store.add("qprof",{cedente:A.cedNome||A.cedente||"",data:S.Q.data,total:A.total,texto:$("#q_texto").value,criadoEm:Date.now()}),"Pendência salva no histórico");break}
     case"qCopyH":copiar(S.qprofs[id].texto,"Texto copiado");break;
     case"close":closeDrawer();break;
+    case"pricingAplicar":await pricingAplicar();break;
     case"arm":{const key=el.dataset.key;if(S.armed!==key){S.armed=key;el.dataset.label=el.textContent;el.classList.add("armed");el.textContent="Confirmar exclusão";break}
       S.armed=null;const i=key.indexOf(":"),k=key.slice(0,i),v=key.slice(i+1);
       if(k==="reg"){const rid=bk(v);if(S.raws)S.raws.delete(v);if(store.remote()){const docs=await store.baseDocs(v,["car","tra","raw"]);for(const d of docs)await store.del("base",d.id)}else await idb.del(v);S.bases.delete(v);await safe(store.del("reg",rid),"Posição excluída");regPut(rid,null);if(S.dia===v)S.dia=null;if(S.relDia===v)S.relDia=null;render()}
@@ -2838,6 +2900,7 @@ document.addEventListener("change",async e=>{
   if(t.id==="i_subst"){D.substituir=t.checked;drawImport()}
   if(t.dataset.mbnome){membroNome(t.dataset.mbnome,t.value.trim());return}
   if(t.dataset.ftipo!=null){D.files[+t.dataset.ftipo].tipo=t.value;drawImport()}
+  if(t.id==="pricingFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);pricingAbrir(pl,t.files[0].name)}catch(err){toast(err.message||String(err))}t.value=""}
   if(t.id==="refFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);const ks=Object.keys(pl.sheets);await importarReferencias(n=>{const k=ks.find(s=>s.toUpperCase()===n);return k?pl.sheets[k]:null})}catch(err){toast(err.message)}t.value=""}
   if(t.id==="q_file"&&t.files[0]){try{const wb=await lerArquivo(t.files[0],true);let b=null;for(const n of wb.SheetNames){const ws=wb.Sheets[n];const aoa=window.XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true});
       for(let i=0;i<Math.min(15,aoa.length);i++){const H=(aoa[i]||[]).map(x=>String(x||"").trim().toUpperCase());if(H.includes("VLR. ABERTO")&&(H.includes("MOTIVO ENTREGA")||H.includes("STATUS CHECAGEM"))){
