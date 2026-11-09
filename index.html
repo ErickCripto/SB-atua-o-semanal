@@ -2344,7 +2344,7 @@ function vAjustes(){
      <tr><td>Risco Pricing</td><td class="r num">${Object.keys(S.risco).length} códigos</td></tr><tr><td>Grupos econômicos</td><td class="r num">${Object.keys(S.grupos).length} códigos</td></tr>
      <tr><td>Limite da tranche</td><td class="r num">${Object.keys(S.lim).length} cedentes</td></tr><tr><td>Característica</td><td class="r num">${Object.keys(S.car).length} cedentes</td></tr><tr><td>Anotações</td><td class="r num">${Object.keys(S.anot).length} cedentes</td></tr></tbody></table>
      <div class="fbar"><label class="btn">Atualizar a partir da planilha (.xlsx)<input type="file" id="refFile" accept=".xlsx,.xlsm,.xls" hidden></label></div>
-     <p class="hint">Lê as abas RISCO PRINCING (risco e grupo econômico), LIMITE - TRANCHE, CARACTERISTICA, METAS ESPECIAIS e METAS TRANCHE. As que não existirem no arquivo ficam como estão.</p></fieldset>
+     <p class="hint">Lê as abas RISCO PRINCING (risco e grupo econômico) ou uma planilha de pricing (código do cedente + Pricing), LIMITE - TRANCHE, CARACTERISTICA, METAS ESPECIAIS e METAS TRANCHE. As que não existirem no arquivo ficam como estão.</p></fieldset>
     <fieldset class="box"><legend>Exportar</legend><div class="fbar"><button class="btn" data-act="expReg">Registro diário (.xlsx)</button><button class="btn" data-act="expAnot">Anotações e chamados (.xlsx)</button></div></fieldset>
     <fieldset class="box"><legend>Posições registradas (${ds.length})</legend><div class="tw" style="max-height:380px"><table class="grid"><thead><tr><th>Data</th><th>Cedentes</th><th>Títulos</th><th>Título a título</th><th>Arquivo</th><th></th></tr></thead><tbody>
      ${ds.map(d=>{const r=S.regs[d];return`<tr><td class="num">${fd(d)}</td><td class="r num">${(r.linhas||[]).filter(l=>l.naCarteira).length}</td><td class="r num">${r.titCart||"—"}</td><td class="c">${r.temBase?"✓":'<span class="muted">não</span>'}</td><td class="small wrap">${esc((r.arquivos&&r.arquivos.cart)||"")}</td><td class="r">${delBtn("reg:"+d,"Excluir","sm")}</td></tr>`}).join("")||'<tr><td colspan="6" class="muted">Nenhuma.</td></tr>'}
@@ -2670,11 +2670,11 @@ function pricingLer(sheets){
   const nomes=Object.keys(sheets);const ord=[...nomes.filter(n=>/pric|princ|risco/i.test(n)),...nomes.filter(n=>!/pric|princ|risco/i.test(n))];
   for(const nm of ord){const A=sheets[nm]||[];
     for(let h=0;h<Math.min(15,A.length);h++){const H=(A[h]||[]).map(x=>nrmN(x));
-      const iCod=H.findIndex(x=>/^(cod\.? ?cedente|codigo ?cedente|cod ced|cod\.? ?do cedente|codigo|cod\.?|cedente cod)$/.test(x));
+      const iCod=H.findIndex(x=>/^(cod\.? ?cedente|codigo ?cedente|cod ced|cod\.? ?do cedente|codigo|cod\.?|cedente cod|cdg_pss|cod_pss|cdg pss|cod pss|cdg_cedente|cod_cedente)$/.test(x));
       const iR=H.findIndex(x=>/^(risco|risco pricing|risco princing|pricing|princing|classificacao|class\.? risco|nivel de risco)$/.test(x));
       if(iCod<0||iR<0)continue;
-      const iG=H.findIndex(x=>/^(cod\.? ?grupo|codigo ?grupo|grupo cod|cod grupo economico)$/.test(x)),iGn=H.findIndex(x=>/^(grupo|grupo economico|nome ?grupo|nome do grupo)$/.test(x));
-      const iN=H.findIndex((x,i)=>i!==iCod&&/^(cedente|nome|razao social|nome cedente|nome do cedente)$/.test(x));
+      const iG=H.findIndex(x=>/^(cod\.? ?grupo|codigo ?grupo|grupo cod|cod grupo economico|cod_cliente|cdg_cliente|cod cliente)$/.test(x)),iGn=H.findIndex(x=>/^(grupo|grupo economico|nome ?grupo|nome do grupo|cliente)$/.test(x));
+      const iN=H.findIndex((x,i)=>i!==iCod&&i!==iGn&&/^(cedente|nome|razao social|nome cedente|nome do cedente)$/.test(x));
       const map={},nomesC={},grupos={};let lidos=0,inval=0;
       A.slice(h+1).forEach(r=>{if(!r)return;let c=r[iCod];if(c==null||c==="")return;c=String(c).trim().replace(/\.0+$/,"");const mm=c.match(/^(\d+)/);if(mm)c=mm[1];const rv=riscoNorm(r[iR]);if(!rv){inval++;return}lidos++;if(!map[c])map[c]=rv;if(iN>=0&&r[iN])nomesC[c]=String(r[iN]).trim();if(iG>=0&&r[iG])grupos[c]=[String(r[iG]),String(iGn>=0&&r[iGn]||"")]});
       if(lidos)return{aba:nm,map,nomes:nomesC,grupos:Object.keys(grupos).length?grupos:null,lidos,inval};
@@ -2901,7 +2901,9 @@ document.addEventListener("change",async e=>{
   if(t.dataset.mbnome){membroNome(t.dataset.mbnome,t.value.trim());return}
   if(t.dataset.ftipo!=null){D.files[+t.dataset.ftipo].tipo=t.value;drawImport()}
   if(t.id==="pricingFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);pricingAbrir(pl,t.files[0].name)}catch(err){toast(err.message||String(err))}t.value=""}
-  if(t.id==="refFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);const ks=Object.keys(pl.sheets);await importarReferencias(n=>{const k=ks.find(s=>s.toUpperCase()===n);return k?pl.sheets[k]:null})}catch(err){toast(err.message)}t.value=""}
+  if(t.id==="refFile"&&t.files[0]){try{toast("Lendo a planilha…");const pl=await lerPlanilha(t.files[0]);const ks=Object.keys(pl.sheets);const UP=ks.map(k=>k.toUpperCase());
+    const outras=["LIMITE - TRANCHE","CARACTERISTICA","METAS ESPECIAIS","METAS TRANCHE"].some(n=>UP.includes(n));const Pr=!UP.includes("RISCO PRINCING")&&pricingLer(pl.sheets);
+    if(outras||!Pr)await importarReferencias(n=>{const k=ks.find(s=>s.toUpperCase()===n);return k?pl.sheets[k]:null});if(Pr)pricingAbrir(pl,t.files[0].name)}catch(err){toast(err.message)}t.value=""}
   if(t.id==="q_file"&&t.files[0]){try{const wb=await lerArquivo(t.files[0],true);let b=null;for(const n of wb.SheetNames){const ws=wb.Sheets[n];const aoa=window.XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true});
       for(let i=0;i<Math.min(15,aoa.length);i++){const H=(aoa[i]||[]).map(x=>String(x||"").trim().toUpperCase());if(H.includes("VLR. ABERTO")&&(H.includes("MOTIVO ENTREGA")||H.includes("STATUS CHECAGEM"))){
         /* Nota Fiscal (Seu Número) como aparece no arquivo, sem virar data */
