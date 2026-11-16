@@ -852,7 +852,7 @@ const Core=(function(){
         if(mov){const m=mov.get(+cod)||mov.get(cod);L.mov=m?Object.fromEntries(Object.entries(m).filter(([k])=>!["sconf","sfica"].includes(k)).map(([k,v])=>[k,[v[0],r2(v[1])]])):null}
       }else L.status="Sem dados";
       if(t){
-        const lim=ref.lim[cod];const temLim=lim&&lim.limite!==""&&lim.limite!=null&&!isNaN(+lim.limite);
+        const lim=ref.lim[cod];const temLim=!!lim&&lim.limite!=null&&String(lim.limite).trim()!==""&&!isNaN(+lim.limite)&&+lim.limite>0;
         const pr=cfg.metasTranchePropria&&cfg.metasTranchePropria[cod];
         const mu=pr&&pr.meta?+pr.meta:risco==="Alto"?cfg.trAlto:risco==="Médio"?cfg.trMedio:risco==="Baixo"?cfg.trBaixo:cfg.trSem;
         const I=r2(t.valor),J=temLim?+lim.limite:null;
@@ -873,9 +873,12 @@ const Core=(function(){
     const an=(ref.anot||{})[L.cod]||{};if(!an.dia)o.dia=diaSugerido(L.cod,risco);
     if(L.naCarteira&&L.valor!=null){const st=statusConf(L.ind,mi.meta,cfg.margem);if(L.naoAtuar){o.statusPlanilha=st;o.status="Não atuar";o.faltam=0}else{o.status=st;o.faltam=L.ind==null?null:Math.max(0,r2(mi.meta*L.valor-L.vconf))}}
     if(L.tr){const pr=cfg.metasTranchePropria&&cfg.metasTranchePropria[L.cod];const mu=pr&&pr.meta?+pr.meta:risco==="Alto"?cfg.trAlto:risco==="Médio"?cfg.trMedio:risco==="Baixo"?cfg.trBaixo:cfg.trSem;
-      const tr={...L.tr,metaUso:mu},J=L.tr.limite,I=L.tr.valor;if(J!=null&&typeof J==="number"){tr.teto=r2(J*mu);tr.reduzir=Math.max(0,r2(I-tr.teto));tr.status=r2(I)>r2(J)?"EXCESSO":r2(I)>r2(tr.teto)?"Acima da meta":"OK"}
+      const tr={...L.tr,metaUso:mu},J=L.tr.limite,I=L.tr.valor;if(typeof J==="number"&&J>0){tr.teto=r2(J*mu);tr.reduzir=Math.max(0,r2(I-tr.teto));tr.status=r2(I)>r2(J)?"EXCESSO":r2(I)>r2(tr.teto)?"Acima da meta":"OK"}
       tr.statusConf=statusConf(tr.ind,mi.meta,cfg.margem);o.tr=tr}
     return o}
+  /* cedente sem limite (vazio ou zero) não fica em excesso: vira "Sem limite" */
+  function trNorm(L){const t=L&&L.tr;if(!t||(typeof t.limite==="number"&&t.limite>0))return L;if(t.status==="Sem limite"&&t.limite==null)return L;
+    return{...L,tr:{...t,limite:null,pct:null,teto:null,excesso:null,reduzir:null,folga:null,status:"Sem limite"}}}
   /* valores da linha restritos a alguns rótulos */
   function porRotulo(L,rots,cfg){
     if(!rots||!rots.length||!L.naCarteira)return L;let q=0,v=0,cv=0,c9=0,na=0,nc=0;
@@ -884,7 +887,7 @@ const Core=(function(){
     const o={...L,tit:q,valor:v,vconf:cv,ind,c99:v?c9/v:null,na:v?na/v:null,nc:v?nc/v:null,filtrado:true};
     o.status=L.naoAtuar?"Não atuar":statusConf(ind,L.meta,cfg.margem);o.faltam=L.naoAtuar||ind==null?0:Math.max(0,r2(L.meta*v-cv));return o;
   }
-  return{reaplicarRisco,U,nrm,toNum,toInt,toSerial,isoSerial,serialISO,pzDays,canonRot,findHeader,parseBase,motInfo,movimento,calcular,porRotulo,prazoCk,pistas,checagem,naoAtuar,confCat,riscoDe,metaDe,statusConf,diaSugerido,nivel};
+  return{trNorm,reaplicarRisco,U,nrm,toNum,toInt,toSerial,isoSerial,serialISO,pzDays,canonRot,findHeader,parseBase,motInfo,movimento,calcular,porRotulo,prazoCk,pistas,checagem,naoAtuar,confCat,riscoDe,metaDe,statusConf,diaSugerido,nivel};
 })();
 if(typeof module!=="undefined")module.exports=Core;
 
@@ -1134,7 +1137,7 @@ Object.defineProperty(S,"regs",{get(){const ns=nsAtual();if(regsCache&&regsCache
 const refObj=()=>({cfg:S.cfg,risco:S.risco,lim:S.lim,carac:Object.fromEntries(Object.entries(S.car).map(([k,v])=>[k,v.texto])),anot:S.anot});
 const regDatas=()=>Object.keys(S.regs).sort();
 const regDe=d=>d&&S.regs[d]?S.regs[d]:null;
-const linhasDe=d=>{const r=regDe(d);return r?r.linhas||[]:[]};
+const LN_CACHE=new WeakMap();const linhasDe=d=>{const r=regDe(d);if(!r||!r.linhas)return[];let c=LN_CACHE.get(r.linhas);if(!c){c=r.linhas.map(Core.trNorm);LN_CACHE.set(r.linhas,c)}return c};
 const mapa=d=>{const m={};linhasDe(d).forEach(l=>m[l.cod]=l);return m};
 const ultimo=()=>regDatas().pop()||null;
 const anterior=d=>regDatas().filter(x=>x<d).pop()||null;
@@ -1343,20 +1346,23 @@ async function sbIniciar(){if(!vigiando){vigiando=true;vigiarMeiaNoite()}
 }
 /* ---------- NOVIDADES: pop-up com o que mudou desde a última versão que a pessoa viu ---------- */
 const NOVIDADES=[
+ {v:"2026.11.16a",nome:"Beta 2.1",data:"16/11/2026",itens:[
+  "<b>Novidades liberadas para todos:</b> o que estava só com os beta testes agora vale para toda a equipe — aba VAZIOS, observação dos sacados (em todas as telas com sacados, na ficha do cedente e na Base para chamados), Evolução da carteira com e-mail do resumo e, para administradores, o Pricing em Ajustes.",
+  "<b>Tranche:</b> cedente sem limite (limite vazio ou zero) não aparece mais como excesso; fica como “Sem limite”, inclusive nas posições já registradas."]},
  {v:"2026.11.09a",nome:"Beta 2.0",data:"09/11/2026",itens:[
-  {beta:true,texto:"<b>Pricing (Ajustes):</b> mande a planilha de pricing e o site mostra quem mudou de risco; ao confirmar, troca o risco e recalcula meta, situação, quanto falta e a meta da tranche nas bases de todas as carteiras e de Todos os cedentes (deste mês, só a mais recente ou todas)."}]},
+  {texto:"<b>Pricing (Ajustes):</b> mande a planilha de pricing e o site mostra quem mudou de risco; ao confirmar, troca o risco e recalcula meta, situação, quanto falta e a meta da tranche nas bases de todas as carteiras e de Todos os cedentes (deste mês, só a mais recente ou todas)."}]},
  {v:"2026.11.03c",nome:"Beta 1.9",data:"03/11/2026",itens:[
   "<b>Bases separadas:</b> a base de cada carteira agora é só de quem importou (não junta mais com a dos outros responsáveis nem com a de Todos os cedentes), e a base de Todos os cedentes é outra, só da equipe. As posições antigas continuam valendo até você importar a do dia.",
   "<b>Importar base do dia:</b> a prévia agora mostra só os cedentes do seu arquivo (quantidade, índice médio, abaixo da meta e com tranche). O total da base da equipe, já juntando com os cedentes das outras pessoas, aparece logo abaixo."]},
  {v:"2026.11.03a",nome:"Beta 1.8",data:"03/11/2026",itens:[
-  {beta:true,texto:"<b>Evolução da carteira (Carteiras):</b> no fim da aba Carteiras, o resumo do mês ou de um período específico (De/Até) por semana (confirmados, entradas, saídas do risco, C99, pendentes, índice e carteira), como as confirmações foram feitas, destaques por cedente, tabela por rótulo, gráficos de entradas/saídas, confirmados e índice, resumo por dia ou por semana e o texto do e-mail do resumo pronto para copiar."},
+  {texto:"<b>Evolução da carteira (Carteiras):</b> no fim da aba Carteiras, o resumo do mês ou de um período específico (De/Até) por semana (confirmados, entradas, saídas do risco, C99, pendentes, índice e carteira), como as confirmações foram feitas, destaques por cedente, tabela por rótulo, gráficos de entradas/saídas, confirmados e índice, resumo por dia ou por semana e o texto do e-mail do resumo pronto para copiar."},
   "<b>Planilha de pendências:</b> as abas de motivo não trazem mais o Cod. Cedente (ele continua só na aba BASE)."]},
  {v:"2026.10.30e",nome:"Beta 1.7",data:"30/10/2026",itens:[
-  {beta:true,texto:"<b>Observação do sacado:</b> em todas as telas com sacados (Pesquisar cedente, VAZIOS, ficha do cedente, Base para chamados e listas de títulos), clique em “+ observação” para anotar algo sobre o sacado (ex.: só atende por WhatsApp). Vale para todos os cedentes e títulos daquele sacado e fica com histórico."}]},
+  {texto:"<b>Observação do sacado:</b> em todas as telas com sacados (Pesquisar cedente, VAZIOS, ficha do cedente, Base para chamados e listas de títulos), clique em “+ observação” para anotar algo sobre o sacado (ex.: só atende por WhatsApp). Vale para todos os cedentes e títulos daquele sacado e fica com histórico."}]},
  {v:"2026.10.30d",nome:"Beta 1.6",data:"30/10/2026",itens:[
   "<b>Cargos:</b> só quem é administrador e beta teste ao mesmo tempo pode dar ou tirar os cargos de administrador e de beta teste."]},
  {v:"2026.10.30c",nome:"Beta 1.5",data:"30/10/2026",itens:[
-  {beta:true,texto:"<b>VAZIOS:</b> nova aba em Minha carteira com os títulos de rótulos faturizados, Motivo Entrega vazio e Merc. Ent. = FALSE, de qualquer aditivo; os que passaram do prazo da característica (ex.: D+5) ficam em vermelho para não serem esquecidos."}]},
+  {texto:"<b>VAZIOS:</b> nova aba em Minha carteira com os títulos de rótulos faturizados, Motivo Entrega vazio e Merc. Ent. = FALSE, de qualquer aditivo; os que passaram do prazo da característica (ex.: D+5) ficam em vermelho para não serem esquecidos."}]},
  {v:"2026.10.30b",nome:"Beta 1.4",data:"30/10/2026",itens:[
   "<b>Beta teste:</b> o administrador pode marcar pessoas como beta teste em Ajustes › Equipe. Funções novas aparecem primeiro para elas, com o selo BETA TESTE; depois de testadas, são liberadas para todos."]},
  {v:"2026.10.30",nome:"Beta 1.3",data:"30/10/2026",itens:[
@@ -1619,6 +1625,8 @@ const ehAdmin=()=>store.kind!=="sb"||!!(SBC.eu&&SBC.eu.admin);
 /* Beta teste: funções novas aparecem primeiro só para quem o administrador marcou como beta teste */
 const ehBeta=()=>store.kind==="sb"&&!!(SBC.eu&&SBC.eu.beta);
 /* dar ou tirar os cargos de administrador e beta teste: só administrador que também é beta teste (ou qualquer adm enquanto ninguém for beta) */
+/* funções que já saíram do beta valem para todos; liberado() fica só para as próximas novidades em teste */
+const liberado=()=>true;
 const podeCargos=()=>store.kind!=="sb"||(ehAdmin()&&(ehBeta()||!(SBC.membros||[]).some(m=>m.beta)));
 const papel=()=>[ehAdmin()?"Administrador":"Equipe",ehBeta()?"Beta teste":""].filter(Boolean).join(" · ");
 function render(){
@@ -1629,8 +1637,8 @@ function render(){
   const todos=S.visao==="equipe";
   if(S.mode==="sb"||S.mode==="db"||S.mode==="local"){if(todos&&!["geral","ajustes","controle"].includes(S.view)){S.view="geral";try{history.replaceState(null,"","#pesquisar")}catch(e){}}
     if(!todos&&S.view==="geral"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}}
-  if(S.view==="faturizados"&&!ehBeta()&&S.mode==="sb"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}
-  $$(".tab").forEach(t=>{const eq=t.classList.contains("eq");t.hidden=todos?!eq:(eq||(t.classList.contains("so-beta")&&!ehBeta()));
+  if(S.view==="faturizados"&&!liberado()&&S.mode==="sb"){S.view="atuacao";try{history.replaceState(null,"","#atuacao")}catch(e){}}
+  $$(".tab").forEach(t=>{const eq=t.classList.contains("eq");t.hidden=todos?!eq:(eq||(t.classList.contains("so-beta")&&!liberado()));
     const on=eq?(S.view==="geral"&&(S.gSub||"pesq")===t.dataset.g):t.dataset.v===S.view;if(on)t.setAttribute("aria-current","page");else t.removeAttribute("aria-current")});
   $("#saveMode").textContent=S.mode==="db"?"Salvo na sua conta":S.mode==="sb"?"Banco da equipe":S.mode==="local"?"Salvo só neste navegador":S.mode==="login"||S.mode==="semacesso"||S.mode==="trocar"||S.mode==="restrito"?"Aguardando acesso":"Conectando…";
   const vbx=$("#versaoBox");if(vbx){vbx.textContent=VERSAO_NOME;vbx.title="Versão do site — clique para ver as novidades"}
@@ -1669,7 +1677,7 @@ function totbar(items){return`<div class="totbar">${items.map(([k,v])=>`<span>${
 /* ---------- OBSERVAÇÃO DO SACADO (beta teste) ---------- */
 const obsChave=(sacc,nome)=>{const c=String(sacc==null?"":sacc).replace(/\D/g,"");return c?"c_"+c:"n_"+nrmN(nome).replace(/[^a-z0-9]+/g,"_").slice(0,80)};
 const obsDe=(sacc,nome)=>S.obsSac[obsChave(sacc,nome)]||null;
-function obsCel(sacc,nome){if(!ehBeta())return"";const o=obsDe(sacc,nome);const k=obsChave(sacc,nome);
+function obsCel(sacc,nome){if(!liberado())return"";const o=obsDe(sacc,nome);const k=obsChave(sacc,nome);
   return`<button class="lk small obsb${o&&o.texto?" tem":""}" data-act="obsSac" data-id="${esc(k)}" data-c="${esc(sacc||"")}" data-n="${esc(nome||"")}" title="Observação do sacado">${o&&o.texto?"📝 "+esc(o.texto.length>60?o.texto.slice(0,60)+"…":o.texto):"+ observação"}</button>`}
 function openObsSac(k,sacc,nome){const o=S.obsSac[k]||{};D={kind:"obssac",k,sacc,nome};
   drawer("Observação do sacado",`<p><b>${esc(nomeB(nome||o.nome||""))}</b>${sacc?` <span class="muted">· cód. ${esc(sacc)}</span>`:""}</p>
@@ -1682,16 +1690,16 @@ async function salvarObsSac(texto){const{k,sacc,nome}=D;const o=S.obsSac[k]||{};
   const v={cod:sacc||"",nome:nome||o.nome||"",texto,por:SBC.user?SBC.user.email:"",em:new Date().toISOString(),hist};closeDrawer();await safe(store.set("obssac",k,v),texto?"Observação salva":"Observação apagada");render()}
 
 /* sacados de um cedente (para a ficha e a pendência), com a observação */
-function sacadosFicha(cod){if(!ehBeta())return"";const d=ultimo();const b=d?needBase(d,()=>{if(D&&D.kind==="ced"&&String(D.cod)===String(cod))openCed(cod)}):null;if(!b||!b.car)return"";const B=b.car;const mi=Core.motInfo(B,S.cfg);const M=new Map();
+function sacadosFicha(cod){if(!liberado())return"";const d=ultimo();const b=d?needBase(d,()=>{if(D&&D.kind==="ced"&&String(D.cod)===String(cod))openCed(cod)}):null;if(!b||!b.car)return"";const B=b.car;const mi=Core.motInfo(B,S.cfg);const M=new Map();
   for(const r of B.rows){if(String(r[1])!==String(cod))continue;const k=r[19]||B.sac[r[4]];let a=M.get(k);if(!a){a={sacc:r[19]||"",sac:B.sac[r[4]]||"",n:0,v:0,pv:0};M.set(k,a)}a.n++;a.v+=r[2];if(mi[r[3]].cls!==0)a.pv+=r[2]}
   const L=[...M.values()].sort((x,y)=>y.pv-x.pv||y.v-x.v);if(!L.length)return"";const mostra=L.slice(0,S.fichaSacAll?L.length:15);
-  return`<fieldset class="box in"><legend>Sacados (${L.length}) <span class="ubeta">BETA TESTE</span></legend><div class="tw" style="max-height:320px"><table class="grid"><thead><tr><th>Cód. Sacado</th><th>Sacado</th><th>Títulos</th><th>Valor</th><th>Sem confirmação</th><th>Observação do sacado</th></tr></thead><tbody>
+  return`<fieldset class="box in"><legend>Sacados (${L.length})</legend><div class="tw" style="max-height:320px"><table class="grid"><thead><tr><th>Cód. Sacado</th><th>Sacado</th><th>Títulos</th><th>Valor</th><th>Sem confirmação</th><th>Observação do sacado</th></tr></thead><tbody>
    ${mostra.map(a=>`<tr><td class="num">${esc(a.sacc||"—")}</td><td>${esc(nomeB(a.sac))}</td><td class="r num">${a.n}</td><td class="r num">${money(a.v)}</td><td class="r num">${a.pv?money(a.pv):"—"}</td><td class="wrap">${obsCel(a.sacc,a.sac)}</td></tr>`).join("")}</tbody></table></div>
    ${L.length>15?`<button class="lk" data-act="fichaSacAll" data-id="${esc(cod)}">${S.fichaSacAll?"Mostrar só os 15 primeiros":"Mostrar todos os "+L.length}</button>`:""}</fieldset>`}
-function sacadosPendencia(A){if(!ehBeta()||!A||!A.itens)return"";const c=A.c;const M=new Map();
+function sacadosPendencia(A){if(!liberado()||!A||!A.itens)return"";const c=A.c;const M=new Map();
   for(const i of A.itens){if(Qprof.isOK(i.motivo))continue;const r=i.r;const sacc=c.cods>=0&&r[c.cods]!=null?String(r[c.cods]):"";const sac=i.sacado||"";const k=sacc||sac;let a=M.get(k);if(!a){a={sacc,sac,n:0,v:0,mot:new Map()};M.set(k,a)}a.n++;a.v+=i.valor;a.mot.set(i.motivo||"(sem motivo)",(a.mot.get(i.motivo||"(sem motivo)")||0)+1)}
   const L=[...M.values()].sort((x,y)=>y.v-x.v);if(!L.length)return"";
-  return`<fieldset class="box"><legend>Sacados pendentes (${L.length}) <span class="ubeta">BETA TESTE</span></legend><div class="tw" style="max-height:360px"><table class="grid"><thead><tr><th>Cód. Sacado</th><th>Sacado</th><th>Notas</th><th>Valor</th><th>Motivos</th><th>Observação do sacado</th></tr></thead><tbody>
+  return`<fieldset class="box"><legend>Sacados pendentes (${L.length})</legend><div class="tw" style="max-height:360px"><table class="grid"><thead><tr><th>Cód. Sacado</th><th>Sacado</th><th>Notas</th><th>Valor</th><th>Motivos</th><th>Observação do sacado</th></tr></thead><tbody>
    ${L.map(a=>`<tr><td class="num">${esc(a.sacc||"—")}</td><td>${esc(nomeB(a.sac))}</td><td class="r num">${a.n}</td><td class="r num">${money(a.v)}</td><td class="small wrap">${[...a.mot.entries()].map(([m,n])=>esc(m)+" ("+n+")").join(" · ")}</td><td class="wrap">${obsCel(a.sacc,a.sac)}</td></tr>`).join("")}</tbody></table></div></fieldset>`}
 
 /* ---------- FATURIZADOS NOVOS SEM MOTIVO (beta teste) ---------- */
@@ -1705,7 +1713,7 @@ function fatLista(d,b){const B=b.car;const hoje=Core.isoSerial(d);const padrao=+
     let g=out.get(cod);if(!g){g={cod,nome:(B.ced||{})[cod]||nomeCed(cod),car:car&&car.texto||"",pz,lim,it:[],v:0};out.set(cod,g)}const fora=dias!=null&&dias>lim;g.it.push({r,bb:B,ad,dias,fora});g.v+=r[2];if(fora){g.nf=(g.nf||0)+1;g.vf=(g.vf||0)+r[2]}}
   return[...out.values()].sort((a,b)=>(b.vf||0)-(a.vf||0)||b.v-a.v)}
 function vFaturizados(){
-  const d=ultimo();const tit=`<div class="ptitle">VAZIOS <span class="muted" style="font-weight:normal">· faturizados sem motivo e Merc. Ent. FALSE</span> <span class="ubeta">BETA TESTE</span><span class="muted"> · ${d?"base de "+fd(d):"sem base"}</span></div>`;
+  const d=ultimo();const tit=`<div class="ptitle">VAZIOS <span class="muted" style="font-weight:normal">· faturizados sem motivo e Merc. Ent. FALSE</span><span class="muted"> · ${d?"base de "+fd(d):"sem base"}</span></div>`;
   if(!d)return tit+vazio();const b=needBase(d);if(b===undefined)return tit+'<p class="hint carregando">Carregando a base…</p>';if(!b||!b.car)return tit+`<div class="warn-box">A base de ${fd(d)} não tem os títulos salvos. Importe a base de novo.</div>`;
   S.raws=S.raws||new NSMap();if(!S.raws.has(d)&&store.kind!=="db"){if(!S.rawCarregando){S.rawCarregando=true;loadRaw(d).finally(()=>{S.rawCarregando=false;render()})}return tit+'<p class="hint carregando">Carregando a base…</p>'}
   const temMerc=!!(S.raws.get(d)&&S.raws.get(d).hdr&&S.raws.get(d).hdr.some(h=>Core.nrm(h)===Core.nrm("Merc. Ent.")));
@@ -1763,8 +1771,8 @@ function gPesquisa(date,b){
     <tr><th class="l">Dificuldade de checagem</th><td>${rf.dificuldade?`<span style="background:#FFC000;padding:1px 6px">${esc(rf.dificuldade)}</span>`:"#N/A"}</td><th class="l">Rating / Rating Agro</th><td>${esc(rf.rating||"SEM RATING AGRO")} · ${esc(rf.ragro||"NÃO É AGRO")}</td></tr>
     ${S.car[cod]&&S.car[cod].texto?`<tr><th class="l">Característica</th><td colspan="3" class="wrap small">${esc(S.car[cod].texto)}</td></tr>`:""}</tbody></table></div></fieldset>
    <fieldset class="box"><legend>Rótulos e motivos</legend><div class="tw"><table class="grid"><thead><tr><th>Rótulo / Motivo Entrega</th><th>Risco (valor)</th><th>%</th><th>Situação</th></tr></thead><tbody>${linhas.join("")}<tr class="tot"><td><b>TOTAL</b></td><td class="r num"><b>${money(Sd.tot)}</b></td><td class="r num"><b>100,0%</b></td><td></td></tr></tbody></table></div></fieldset>
-   <fieldset class="box"><legend>Sacados (${sacs.length})</legend><div class="tw"><table class="grid"><thead><tr><th>Cód.</th><th>Sacado</th><th>Cidade/UF</th><th>Títulos</th><th>Valor aberto</th><th>% confirmado</th><th>Pendente</th><th>Problema</th><th>Motivos</th>${ehBeta()?"<th>Observação do sacado</th>":""}</tr></thead><tbody>
-    ${sacs.slice(0,lim2).map(a=>`<tr><td class="num">${esc(a.sacc||"—")}</td><td><button class="lk" data-act="gSacTit" data-id="${esc(cod)}" data-s="${esc(a.sacc||a.sac)}">${esc(a.sac)}</button></td><td class="small">${esc([a.cid,a.uf].filter(Boolean).join("/"))}</td><td class="r num">${a.n}</td><td class="r num">${money(a.v)}</td><td class="r num">${pc(a.v?a.cv/a.v:0)}</td><td class="r num">${a.pv?money(a.pv):"—"}</td><td class="r num${a.prv?" bad":""}">${a.prv?money(a.prv):"—"}</td><td class="small wrap">${[...a.mot.entries()].sort((x,y)=>y[1]-x[1]).slice(0,3).map(([m,n])=>esc(m)+" ("+n+")").join(" · ")}</td>${ehBeta()?`<td class="wrap">${obsCel(a.sacc,a.sac)}</td>`:""}</tr>`).join("")}</tbody></table></div>
+   <fieldset class="box"><legend>Sacados (${sacs.length})</legend><div class="tw"><table class="grid"><thead><tr><th>Cód.</th><th>Sacado</th><th>Cidade/UF</th><th>Títulos</th><th>Valor aberto</th><th>% confirmado</th><th>Pendente</th><th>Problema</th><th>Motivos</th>${liberado()?"<th>Observação do sacado</th>":""}</tr></thead><tbody>
+    ${sacs.slice(0,lim2).map(a=>`<tr><td class="num">${esc(a.sacc||"—")}</td><td><button class="lk" data-act="gSacTit" data-id="${esc(cod)}" data-s="${esc(a.sacc||a.sac)}">${esc(a.sac)}</button></td><td class="small">${esc([a.cid,a.uf].filter(Boolean).join("/"))}</td><td class="r num">${a.n}</td><td class="r num">${money(a.v)}</td><td class="r num">${pc(a.v?a.cv/a.v:0)}</td><td class="r num">${a.pv?money(a.pv):"—"}</td><td class="r num${a.prv?" bad":""}">${a.prv?money(a.prv):"—"}</td><td class="small wrap">${[...a.mot.entries()].sort((x,y)=>y[1]-x[1]).slice(0,3).map(([m,n])=>esc(m)+" ("+n+")").join(" · ")}</td>${liberado()?`<td class="wrap">${obsCel(a.sacc,a.sac)}</td>`:""}</tr>`).join("")}</tbody></table></div>
     ${sacs.length>25?`<button class="lk" data-act="gSacAll">${S.gSacAll?"Mostrar só os 25 maiores":"Mostrar todos os "+sacs.length+" sacados"}</button>`:""}</fieldset>`}
 function gDownload(date,b){const ceds=geralCeds(b);
   return`<fieldset class="box"><legend>Dashboard</legend><p>Gera o dash de confirmação da carteira (o mesmo modelo do “Índice de Confirmação da Carteira”) com a base de ${fd(date)} e a visão atual (${S.visao==="minha"?"minha carteira":S.visao==="pessoa"?"carteira de "+esc(nomeB(S.visaoPessoa)):"equipe toda"}: ${ceds.length} cedentes). É um arquivo único, que abre em qualquer navegador e pode ser encaminhado.</p><button class="btn pri" data-act="gDash">Baixar dashboard (HTML)</button></fieldset>
@@ -1952,8 +1960,8 @@ function vControle(){
   const n=x=>x?`<b class="num">${x}</b>`:'<span class="muted">0</span>';
   // carteira de cada responsável (situação atual)
   const L=(()=>{const by=new Map();for(const[id,v]of Object.entries(S.regsAll)){const i=id.indexOf(NS_SEP);if(i<0||!id.startsWith("p_"))continue;const d=id.slice(i+1),ns=id.slice(0,i);const o=by.get(ns);if(!o||d>o.d)by.set(ns,{d,v})}
-    const out=[],donos=new Set();by.forEach(({v})=>{const dn=v.dono||"";donos.add(nrmN(dn));(v.linhas||[]).filter(l=>l.naCarteira||l.tr).forEach(l=>out.push({...l,_resp:dn}))});
-    const ds=Object.keys(S.regsAll).filter(id=>!id.includes(NS_SEP)).sort(),u=ds[ds.length-1];if(u)(S.regsAll[u].linhas||[]).filter(l=>(l.naCarteira||l.tr)&&!donos.has(nrmN(respDe(l.cod)))).forEach(l=>out.push(l));return out})();const semana=S.feito["w"+monday(today())]||{},hojeF=S.feito["d"+today()]||{};
+    const out=[],donos=new Set();by.forEach(({v})=>{const dn=v.dono||"";donos.add(nrmN(dn));(v.linhas||[]).map(Core.trNorm).filter(l=>l.naCarteira||l.tr).forEach(l=>out.push({...l,_resp:dn}))});
+    const ds=Object.keys(S.regsAll).filter(id=>!id.includes(NS_SEP)).sort(),u=ds[ds.length-1];if(u)(S.regsAll[u].linhas||[]).map(Core.trNorm).filter(l=>(l.naCarteira||l.tr)&&!donos.has(nrmN(respDe(l.cod)))).forEach(l=>out.push(l));return out})();const semana=S.feito["w"+monday(today())]||{},hojeF=S.feito["d"+today()]||{};
   const R2=new Map();L.forEach(l=>{const r=l._resp||respDe(l.cod)||"(sem responsável)";const k=nrmN(r);const o=R2.get(k)||{nome:r,ced:0,ab:0,at:0,ok:0,emDia:0,atras:0,ch:0,feito:0,v:0,cv:0,falt:0,exc:0,c99:0};R2.set(k,o);o.ced++;
     if(l.naCarteira){o.v+=l.valor||0;o.cv+=l.vconf||0;o.falt+=l.faltam||0;o.c99+=(l.c99q&&l.c99q[1])||0;if(l.status==="Abaixo")o.ab++;else if(l.status==="Atenção")o.at++;else if(l.status==="OK")o.ok++}
     if(l.tr&&l.tr.status==="EXCESSO")o.exc++;
@@ -2076,7 +2084,7 @@ function vTranche(){
     <td class="r">${t.mov&&t.mov.sconf[0]?mk(t.mov.sconf[1])+` <small class="muted">${t.mov.sconf[0]}</small>`:'<span class="muted">—</span>'}</td><td class="wrap small">${t.top?esc(nomeB(t.top[0]).slice(0,30))+` (${pc(t.top[1]/t.valor,0)})`:""}</td>
     <td class="r num">${pc(t.ind)}</td><td>${chip(t.statusConf)}</td></tr>`}).join("")}</tbody></table></div>
   ${totbar([["Cedentes com tranche",L.length],["Títulos",fN(L.reduce((a,l)=>a+l.tr.tit,0))],["Valor na tranche",money(tot)],["Limite dos cedentes com limite",money(lim)],["Em excesso",exc.length+" ("+mk(exc.reduce((a,l)=>a+(l.tr.excesso||0),0))+")"]])}
-  <p class="foot">EXCESSO = valor acima do limite (limite zero com tranche também é excesso). Acima da meta = dentro do limite, mas acima do teto de uso (Alto ${pc(S.cfg.trAlto,0)}, Médio ${pc(S.cfg.trMedio,0)}, Baixo ${pc(S.cfg.trBaixo,0)}, sem risco ${pc(S.cfg.trSem,0)}). <button class="lk" data-act="copyTbl" data-id="tTr">Copiar tabela</button></p>`}`;
+  <p class="foot">EXCESSO = valor acima do limite. Cedente sem limite (vazio ou zero) aparece como “Sem limite”, nunca como excesso. Acima da meta = dentro do limite, mas acima do teto de uso (Alto ${pc(S.cfg.trAlto,0)}, Médio ${pc(S.cfg.trMedio,0)}, Baixo ${pc(S.cfg.trBaixo,0)}, sem risco ${pc(S.cfg.trSem,0)}). <button class="lk" data-act="copyTbl" data-id="tTr">Copiar tabela</button></p>`}`;
 }
 
 /* ---------- RELATÓRIOS ---------- */
@@ -2337,7 +2345,7 @@ function vAjustes(){
     ${meuNomeBox}${vEquipeHist()}${vConexao()}
     <fieldset class="box"><legend>Backup</legend><p class="hint">Um arquivo com tudo: anotações, chamados, posições, parâmetros e as bases título a título. Serve para guardar uma cópia ou levar os dados para outro lugar (por exemplo, da versão do Claude para o banco da equipe).</p>
      <div class="fbar"><button class="btn" data-act="backupBaixar">Baixar backup (.json)</button><label class="btn">Restaurar backup<input type="file" id="bkFile" accept=".json,application/json" hidden></label></div></fieldset>
-    ${ehAdmin()&&ehBeta()?`<fieldset class="box"><legend>Pricing (risco dos cedentes) <span class="ubeta">BETA</span></legend><p class="hint">Mande a planilha de pricing (.xlsx ou .csv) com o código do cedente e o risco (Alto, Médio, Baixo). O site mostra quem mudou de risco e, ao confirmar, troca o risco e recalcula meta, situação, quanto falta e a meta da tranche nas bases de todas as carteiras e de Todos os cedentes.</p>
+    ${ehAdmin()?`<fieldset class="box"><legend>Pricing (risco dos cedentes)</legend><p class="hint">Mande a planilha de pricing (.xlsx ou .csv) com o código do cedente e o risco (Alto, Médio, Baixo). O site mostra quem mudou de risco e, ao confirmar, troca o risco e recalcula meta, situação, quanto falta e a meta da tranche nas bases de todas as carteiras e de Todos os cedentes.</p>
      <div class="fbar"><label class="btn pri">Enviar planilha de pricing<input type="file" id="pricingFile" accept=".xlsx,.xlsm,.xls,.csv" hidden></label></div>
      <p class="foot">Hoje: ${fN(Object.keys(S.risco).length)} cedentes com risco · ${["Alto","Médio","Baixo"].map(r=>r+": "+fN(Object.values(S.risco).filter(x=>x===r).length)).join(" · ")}</p></fieldset>`:""}
     <fieldset class="box"><legend>Tabelas de referência</legend><table class="grid"><tbody>
@@ -2472,8 +2480,8 @@ function mostrarTit(titulo,it,quando,extraCol,dataISO){
   const velha=it.some(x=>x.r.length<18);
   drawer(titulo,`<div class="row-b"><span class="muted">Base de ${quando} · ${fN(it.length)} títulos · ${money(tot)}</span><button class="btn sm" data-act="copyTbl" data-id="tTit">Copiar tabela</button></div>
   ${velha?'<p class="warn-box">Esta base foi importada antes da atualização: código do sacado e vencimento aparecem a partir da próxima importação.</p>':""}
-  <div class="tw" style="max-height:62vh"><table class="grid" id="tTit"><thead><tr><th>Cód. Cedente</th><th>Seu número</th><th>Título</th><th>Aditivo</th><th>Cód. Sacado</th><th>Sacado</th>${ehBeta()?"<th>Obs. do sacado</th>":""}<th>Cidade/UF do sacado</th><th>Vlr. Aberto</th><th>Motivo Entrega</th>${extraCol?"<th>"+extraCol.h+"</th>":""}<th>Emissão</th><th>Saída</th><th>Dta. Ent.</th><th>Venc. Orig.</th><th>KM</th><th>Prazo NF</th><th>Rótulo</th></tr></thead>
-  <tbody>${it.slice(0,1500).map(x=>{const r=x.r,b=x.bb;return`<tr><td class="num">${esc(r[1])}</td><td class="num">${tx(r[7])}</td><td class="num small">${esc(String(r[0]).replace(/#\d+$/,""))}</td><td class="num small">${tx(r[5])}</td><td class="num">${tx(r[19])}</td><td class="wrap">${esc(nomeB(b.sac[r[4]]||""))}</td>${ehBeta()?`<td class="wrap">${obsCel(r[19],b.sac[r[4]]||"")}</td>`:""}<td class="small">${r[15]!=null?esc((b.dst||[])[r[15]]||""):"—"}</td><td class="r num">${money(r[2])}</td><td class="wrap small">${esc(b.mot[r[3]]||"")}</td>${extraCol?`<td class="wrap small">${esc(extraCol.f(x))}</td>`:""}<td class="num">${d(r[10])}</td><td class="num">${d(r[9])}</td><td class="num">${d(r[6])}</td><td class="num">${d(r[20])}</td><td class="r num">${typeof r[12]==="number"?fN(r[12]):"—"}</td><td>${r[13]===1?'<span class="st bad">FORA</span>':r[13]===0?'<span class="st ok">DENTRO</span>':"—"}</td><td class="small">${esc(b.rot[r[8]]||"")}</td></tr>`}).join("")||'<tr><td colspan="17" class="muted">Nenhum título.</td></tr>'}</tbody></table></div>${it.length>1500?'<p class="hint">Mostrando os 1.500 maiores.</p>':""}`,"",true);
+  <div class="tw" style="max-height:62vh"><table class="grid" id="tTit"><thead><tr><th>Cód. Cedente</th><th>Seu número</th><th>Título</th><th>Aditivo</th><th>Cód. Sacado</th><th>Sacado</th>${liberado()?"<th>Obs. do sacado</th>":""}<th>Cidade/UF do sacado</th><th>Vlr. Aberto</th><th>Motivo Entrega</th>${extraCol?"<th>"+extraCol.h+"</th>":""}<th>Emissão</th><th>Saída</th><th>Dta. Ent.</th><th>Venc. Orig.</th><th>KM</th><th>Prazo NF</th><th>Rótulo</th></tr></thead>
+  <tbody>${it.slice(0,1500).map(x=>{const r=x.r,b=x.bb;return`<tr><td class="num">${esc(r[1])}</td><td class="num">${tx(r[7])}</td><td class="num small">${esc(String(r[0]).replace(/#\d+$/,""))}</td><td class="num small">${tx(r[5])}</td><td class="num">${tx(r[19])}</td><td class="wrap">${esc(nomeB(b.sac[r[4]]||""))}</td>${liberado()?`<td class="wrap">${obsCel(r[19],b.sac[r[4]]||"")}</td>`:""}<td class="small">${r[15]!=null?esc((b.dst||[])[r[15]]||""):"—"}</td><td class="r num">${money(r[2])}</td><td class="wrap small">${esc(b.mot[r[3]]||"")}</td>${extraCol?`<td class="wrap small">${esc(extraCol.f(x))}</td>`:""}<td class="num">${d(r[10])}</td><td class="num">${d(r[9])}</td><td class="num">${d(r[6])}</td><td class="num">${d(r[20])}</td><td class="r num">${typeof r[12]==="number"?fN(r[12]):"—"}</td><td>${r[13]===1?'<span class="st bad">FORA</span>':r[13]===0?'<span class="st ok">DENTRO</span>':"—"}</td><td class="small">${esc(b.rot[r[8]]||"")}</td></tr>`}).join("")||'<tr><td colspan="17" class="muted">Nenhum título.</td></tr>'}</tbody></table></div>${it.length>1500?'<p class="hint">Mostrando os 1.500 maiores.</p>':""}`,"",true);
 }
 /* títulos com todas as colunas da base original, na ordem do arquivo (igual aos detalhes da síntese) */
 function rawIndice(rw){if(rw._ix)return rw._ix;const H=rw.hdr.map(h=>Core.nrm(h));const iT=H.indexOf(Core.nrm("Título")),iS=H.indexOf(Core.nrm("Seu Número")),iC=H.indexOf(Core.nrm("Cod. Cedente"));const m=new Map(),seen=new Map();
@@ -2483,7 +2491,7 @@ function mostrarTitRaw(titulo,it,quando,extraCol,rw){
   it.sort((a,b)=>b.r[2]-a.r[2]);const tot=it.reduce((a,x)=>a+x.r[2],0);const ix=rawIndice(rw);const H=rw.hdr.map(h=>String(h==null?"":h));
   const ehD=h=>/^(dta\.?|emiss|venc|sa[ií]da|data)/i.test(h.trim()),ehV=h=>/^vlr/i.test(h.trim());
   const fmt=(h,v)=>{if(v==null||v==="")return"";if(typeof v==="number"){if(ehD(h)&&v>20000)return fd(Core.serialISO(v));if(ehV(h))return money(v)}return esc(v)};
-  const iMot=H.findIndex(h=>Core.nrm(h)===Core.nrm("Motivo Entrega"));const iSc=H.findIndex(h=>Core.nrm(h)===Core.nrm("Cod. Sacado")),iSn=H.findIndex(h=>Core.nrm(h)===Core.nrm("Sacado"));const ob=ehBeta();
+  const iMot=H.findIndex(h=>Core.nrm(h)===Core.nrm("Motivo Entrega"));const iSc=H.findIndex(h=>Core.nrm(h)===Core.nrm("Cod. Sacado")),iSn=H.findIndex(h=>Core.nrm(h)===Core.nrm("Sacado"));const ob=liberado();
   drawer(titulo,`<div class="row-b"><span class="muted">Base de ${quando} · ${fN(it.length)} títulos · ${money(tot)} · todas as colunas da base</span><button class="btn sm" data-act="copyTbl" data-id="tTit">Copiar tabela</button></div>
   <div class="tw" style="max-height:66vh"><table class="grid" id="tTit"><thead><tr>${extraCol?`<th>${esc(extraCol.h)}</th>`:""}${ob?"<th>Obs. do sacado</th>":""}${H.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead>
   <tbody>${it.slice(0,1500).map(x=>{const r=ix.get(String(x.r[0]));if(!r)return`<tr>${extraCol?`<td>${esc(extraCol.f(x))}</td>`:""}<td colspan="${H.length}" class="muted">${esc(x.r[0])} · ${money(x.r[2])} (título não encontrado na base original)</td></tr>`;
@@ -3022,13 +3030,13 @@ function evolAbaixo(P){const ds=regDatas().filter(d=>d>=P.a&&d<=P.b);const d=ds[
   return linhasDe(d).filter(l=>l.naCarteira&&vis(l.cod)&&l.status==="Abaixo"&&l.faltam>0).map(l=>({cod:l.cod,nome:l.nome,f:l.faltam,ind:l.ind,meta:l.meta})).sort((a,b)=>b.f-a.f)}
 
 function vEvolucao(){
-  if(!ehBeta())return"";const ds=regDatas();if(!ds.length)return"";
+  if(!liberado())return"";const ds=regDatas();if(!ds.length)return"";
   const meses=[...new Set(ds.map(d=>d.slice(0,7)))].sort().reverse();if(!S.evMes||!meses.includes(S.evMes))S.evMes=meses[0];const mes=S.evMes;
   const per=S.evModo==="per";if(per){if(!S.evDe)S.evDe=ds.filter(d=>d.slice(0,7)===mes)[0]||ds[0];if(!S.evAte||S.evAte<S.evDe)S.evAte=ds[ds.length-1]}
   const ultDia=m=>{const y=+m.slice(0,4),k=+m.slice(5,7);return m+"-"+String(new Date(y,k,0).getDate()).padStart(2,"0")};
   const P=per?{a:S.evDe,b:S.evAte}:{a:mes+"-01",b:ultDia(mes)};
   const nomeMes=per?`${fd(P.a)} a ${fd(P.b)}`:MESES_PT[+mes.slice(5,7)-1]+"/"+mes.slice(0,4);const PER=per?"período":"mês",COLT=per?"Período":"Mês";
-  const cab=`<legend>Evolução da carteira <span class="ubeta">BETA</span></legend><div class="fgrid"><label class="fl">Ver ${seg("evModo",per?"per":"mes",[["mes","Mês"],["per","Período específico"]])}</label>${per?`<label class="fl">De <input class="inp" type="date" id="evDe" value="${esc(P.a)}" min="${ds[0]}" max="${ds[ds.length-1]}"></label><label class="fl">Até <input class="inp" type="date" id="evAte" value="${esc(P.b)}" min="${ds[0]}" max="${ds[ds.length-1]}"></label>`:`<label class="fl">Mês <select class="inp" id="evMes">${meses.map(m=>`<option value="${m}"${m===mes?" selected":""}>${MESES_PT[+m.slice(5,7)-1]}/${m.slice(0,4)}</option>`).join("")}</select></label>`}${(S.evRots||[]).length?`<span class="fl">Rótulos: <b>${esc(S.evRots.join(", "))}</b> <button class="lk" data-act="evRotLimpa">limpar</button></span>`:""}</div>`;
+  const cab=`<legend>Evolução da carteira</legend><div class="fgrid"><label class="fl">Ver ${seg("evModo",per?"per":"mes",[["mes","Mês"],["per","Período específico"]])}</label>${per?`<label class="fl">De <input class="inp" type="date" id="evDe" value="${esc(P.a)}" min="${ds[0]}" max="${ds[ds.length-1]}"></label><label class="fl">Até <input class="inp" type="date" id="evAte" value="${esc(P.b)}" min="${ds[0]}" max="${ds[ds.length-1]}"></label>`:`<label class="fl">Mês <select class="inp" id="evMes">${meses.map(m=>`<option value="${m}"${m===mes?" selected":""}>${MESES_PT[+m.slice(5,7)-1]}/${m.slice(0,4)}</option>`).join("")}</select></label>`}${(S.evRots||[]).length?`<span class="fl">Rótulos: <b>${esc(S.evRots.join(", "))}</b> <button class="lk" data-act="evRotLimpa">limpar</button></span>`:""}</div>`;
   const E=evolBases(P);
   if(E.loading)return`<fieldset class="box">${cab}<p class="hint">Carregando as bases do mês título a título… (${E.feitos} de ${E.total})</p></fieldset>`;
   if(!E.B.some(d=>d>=P.a&&d<=P.b))return`<fieldset class="box">${cab}<p class="hint">Não há base título a título salva em ${nomeMes}. Importe as bases do dia para ver a evolução.</p></fieldset>`;
